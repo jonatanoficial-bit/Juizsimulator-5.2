@@ -546,3 +546,135 @@ window.onload = ()=>{carregarLocal();}
 
 </body>
 </html>
+<!-- ===================== PROMOÇÃO AO STJ ===================== -->
+<section id="tela-promocao-stj" class="screen">
+  <div class="card" style="max-width:780px;">
+    <h2>Convite para o STJ</h2>
+    <p style="margin-top:.5rem;font-size:.9rem;color:#cbd5e1;">
+      Parabéns! Seu desempenho chamou atenção da magistratura superior.  
+      Você está apto(a) a disputar uma vaga no Superior Tribunal de Justiça.
+    </p>
+
+    <ul style="margin-top:.8rem;font-size:.85rem;color:#94a3b8;line-height:1.5;">
+      <li>IAJ ≥ 70%</li>
+      <li>Mais de 40 julgamentos</li>
+      <li>Decisões consistentes</li>
+      <li>Perfil adequado à Turma</li>
+    </ul>
+
+    <div style="display:flex;gap:.6rem;margin-top:1.2rem;">
+      <button class="btn btn-primary" onclick="aceitarSTJ()">Aceitar Promoção</button>
+      <button class="btn btn-ghost" onclick="recusarSTJ()">Agora não</button>
+    </div>
+
+    <button class="btn btn-ghost" style="margin-top:1.2rem;" onclick="voltarEscritorio()">Voltar</button>
+  </div>
+</section>
+
+<script>
+function verificarSTJ(){
+  if(estadoApp.stats.stjConvite && !estadoApp.stats.stjAtivo){
+    showScreen('tela-promocao-stj');
+  }
+}
+
+function aceitarSTJ(){
+  estadoApp.stats.stjAtivo = true;
+  estadoApp.tribunal = "stj";
+  salvarLocal();
+  atualizarEscritorio();
+  showScreen('stj');
+}
+
+function recusarSTJ(){
+  showScreen('escritorio');
+}
+
+function atualizarSTJ(){
+  const lista = document.getElementById('lista-stj');
+  lista.innerHTML = "";
+
+  estadoApp.casosSTJ.filter(c=>!c.julgado).slice(0,50).forEach(c=>{
+    const div = document.createElement('div');
+    div.className="case";
+    div.innerHTML = 
+      "<strong>"+c.titulo+"</strong><br>"+
+      "<span style='font-size:.8rem;color:#94a3b8;'>"+c.resumo+"</span><br>"+
+      "<button class='btn btn-primary' style='margin-top:.4rem;' onclick=\"abrirJulgamento('"+c.id+"')\">JULGAR</button>";
+    lista.appendChild(div);
+  });
+
+  gerarMinistros();
+}
+
+function gerarMinistros(){
+  const nomes = [
+    "Min. Arantes", "Min. Toledo", "Min. Vasconcelos", "Min. Ribeiro",
+    "Min. Paiva", "Min. Mendonça", "Min. Diniz", "Min. Celso Duarte",
+    "Min. Ferraz", "Min. Salles"
+  ];
+  estadoApp.ministros = [];
+  for(let i=0;i<5;i++){
+    estadoApp.ministros.push({
+      nome:nomes[Math.floor(Math.random()*nomes.length)],
+      voto: null
+    });
+  }
+  renderMinistros();
+}
+
+function renderMinistros(){
+  const div = document.getElementById('stj-ministros');
+  if(!div) return;
+  div.innerHTML = "";
+
+  estadoApp.ministros.forEach(m=>{
+    const card = document.createElement('div');
+    card.style.padding=".5rem";
+    card.style.border="1px solid #1e293b";
+    card.style.borderRadius="10px";
+    card.style.background="#0f172acc";
+    card.style.fontSize=".8rem";
+    card.style.width="110px";
+
+    const voto = m.voto===null?"—":(m.voto?"Condena":"Absolve");
+    const cor = m.voto===null?"#94a3b8":(m.voto?"#ef4444":"#22c55e");
+
+    card.innerHTML = 
+      "<strong>"+m.nome+"</strong><br>"+
+      "<span style='color:"+cor+"'>"+voto+"</span>";
+
+    div.appendChild(card);
+  });
+}
+
+function julgarSTJFinal(){
+  estadoApp.ministros.forEach(m=>{
+    m.voto = Math.random()<0.5 ? true : false;
+  });
+
+  renderMinistros();
+
+  const votos = estadoApp.ministros.filter(m=>m.voto===true).length;
+  const decisao = votos>=3?"Condenação mantida":"Recurso provido";
+
+  const textoAcordao = 
+    "SUPERIOR TRIBUNAL DE JUSTIÇA\n\n"+
+    "Acórdão\n\n"+
+    "Após análise colegiada, por maioria ("+votos+"/5), ficou decidido:\n"+
+    decisao+"\n\n"+
+    "Publique-se. Intimem-se.";
+
+  document.getElementById('stj-acordao').textContent = textoAcordao;
+  salvarLocal();
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="F9"){
+    julgarSTJFinal();
+  }
+});
+</script>
+
+</body>
+</html>
