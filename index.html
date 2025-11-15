@@ -59,7 +59,7 @@ function useSound(url, enabled=true, volume=0.7){
   return { play };
 }
 
-// ---------- CASOS ----------
+// ---------- CASOS (protótipo) ----------
 function seedCases(){
   const casos = [];
   let id = 1;
@@ -369,7 +369,7 @@ function ProvaViewer({prova,onClose}){
   if(!prova) return null;
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
-      <div className="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full mx-4 p-6">
+      <div className="bg-slate-900 border border-white/15 rounded-3xl max-w-lg wfull mx-4 p-6">
         <h3 className="text-lg font-semibold mb-2">{prova.id} — {prova.tipo}</h3>
         <p className="text-sm whitespace-pre-wrap opacity-90 mb-4">{prova.conteudo}</p>
         <button
@@ -529,26 +529,6 @@ function Julgamento({caso,setCaso,onVoltar,profile,sons}){
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex gap-2
-            <button
-                onClick={()=>ouvir("defesa")}
-                className="px-3 py-1 rounded-xl bg-blue-500 hover:bg-blue-600 text-xs"
-              >
-                Ouvir Defesa
-              </button>
-            </div>
-            <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
-              {falas.map((f,i)=>(
-                <div key={i} className="p-3 rounded-2xl bg-white/10 border border-white/15">
-                  <p className="text-[11px] opacity-70 mb-1">
-                    {f.autor==="acusacao"?"ACUSAÇÃO":
-                     f.autor==="defesa"?"DEFESA":
-                     f.autor==="juiz"?"JUIZ":"TESTEMUNHA"}
-                  </p>
-                  <p className="text-sm whitespace-pre-wrap">{f.texto}</p>
-                </div>
-              ))}
-            </div>
             <div className="mt-4 flex gap-2">
               <input
                 value={pergunta}
@@ -667,166 +647,3 @@ function App(){
   });
   const [currentProfileId,setCurrentProfileId] = useState(null);
   const [cases,setCases] = useState(()=>seedCases());
-  const [currentCase,setCurrentCase] = useState(null);
-
-  const sons = {
-    gavel: useSound(SOUND_URLS.gavel,true,0.8),
-    murmur: useSound(SOUND_URLS.murmur,true,0.4)
-  };
-
-  useEffect(()=>{
-    try{
-      localStorage.setItem("juiz_profiles",JSON.stringify(profiles));
-    }catch(e){}
-  },[profiles]);
-
-  const currentProfile = currentProfileId ? profiles[currentProfileId] : null;
-
-  function handleSelectCourt(courtId){
-    if(!currentProfile) return;
-    const updated = {...currentProfile,court:courtId};
-    const newProfiles = {...profiles,[currentProfileId]:updated};
-    setProfiles(newProfiles);
-    setScreen("location");
-  }
-
-  function handleSelectLocation(estado,cidade){
-    if(!currentProfile) return;
-    const updated = {...currentProfile,estado,cidade};
-    const newProfiles = {...profiles,[currentProfileId]:updated};
-    setProfiles(newProfiles);
-    setScreen("office");
-  }
-
-  function handleSelectCase(caseId){
-    const c = cases.find(x=>x.id===caseId);
-    if(!c) return;
-    setCurrentCase(c);
-    setScreen("trial");
-  }
-
-  function handleUpdateCase(updatedCase){
-    setCases(prev=>prev.map(c=>c.id===updatedCase.id?updatedCase:c));
-    setCurrentCase(updatedCase);
-    if(currentProfileId){
-      const prof = profiles[currentProfileId];
-      const julgados = (prof.stats?.julgados||0)+1;
-      const acertos = (prof.stats?.acertos||0)
-        + (updatedCase.status===(updatedCase.gabarito.culpado?"condenado":"absolvido") ? 1:0);
-      const prestigio = Math.min(100,Math.round((acertos/(julgados||1))*80));
-      const stats = {julgados,acertos,prestigio};
-      const updated = {...prof,stats};
-      setProfiles(prev=>({...prev,[currentProfileId]:updated}));
-    }
-  }
-
-  function handleBackToOffice(){ setScreen("office"); }
-  function handleRelatorio(){ setScreen("relatorio"); }
-  function handleSTJ(){ setScreen("stj"); }
-  function handlePromoverSTJ(){
-    if(!currentProfileId) return;
-    const prof = profiles[currentProfileId];
-    const updated = {...prof,court:"stj"};
-    setProfiles(prev=>({...prev,[currentProfileId]:updated}));
-    setScreen("office");
-  }
-
-  if(screen==="splash"){
-    return <SplashScreen onStart={()=>setScreen("tutorial")} />;
-  }
-  if(screen==="tutorial"){
-    return <TutorialSalvamento onContinuar={()=>setScreen("login")} />;
-  }
-  if(screen==="login"){
-    return (
-      <LoginScreen
-        profiles={profiles}
-        setProfiles={setProfiles}
-        setCurrentProfile={setCurrentProfileId}
-        onEnter={()=>setScreen("court")}
-      />
-    );
-  }
-  if(!currentProfile){
-    return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
-        <button
-          onClick={()=>setScreen("login")}
-          className="px-4 py-2 rounded-xl bg-emerald-500"
-        >
-          Voltar ao login
-        </button>
-      </div>
-    );
-  }
-  if(screen==="court"){
-    return <CourtSelectScreen onSelectCourt={handleSelectCourt} />;
-  }
-  if(screen==="location"){
-    return (
-      <LocationSelect
-        profile={currentProfile}
-        onSelectLocation={handleSelectLocation}
-      />
-    );
-  }
-  if(screen==="office"){
-    const filteredCases = cases.filter(c=>c.tipo===(currentProfile.court||"criminal"));
-    return (
-      <Escritorio
-        profile={currentProfile}
-        cases={filteredCases}
-        onSelectCase={handleSelectCase}
-        onSTJ={handleSTJ}
-        onRelatorio={handleRelatorio}
-        sons={sons}
-      />
-    );
-  }
-  if(screen==="trial" && currentCase){
-    return (
-      <Julgamento
-        caso={currentCase}
-        setCaso={handleUpdateCase}
-        onVoltar={handleBackToOffice}
-        profile={currentProfile}
-        sons={sons}
-      />
-    );
-  }
-  if(screen==="relatorio"){
-    const filteredCases = cases.filter(c=>c.tipo===(currentProfile.court||"criminal"));
-    return (
-      <RelatorioScreen
-        profile={currentProfile}
-        cases={filteredCases}
-        onVoltar={handleBackToOffice}
-      />
-    );
-  }
-  if(screen==="stj"){
-    return (
-      <STJScreen
-        profile={currentProfile}
-        onPromover={handlePromoverSTJ}
-        onVoltar={handleBackToOffice}
-      />
-    );
-  }
-  return (
-    <div className="min-h-screen bg-black text-white flex items-center justify-center">
-      <button
-        onClick={()=>setScreen("splash")}
-        className="px-4 py-2 rounded-xl bg-emerald-500"
-      >
-        Reiniciar
-      </button>
-    </div>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
-  </script>
-</body>
-</html>
