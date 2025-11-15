@@ -2,11 +2,346 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>Jogo do Juiz – Simulador Jurídico</title>
+<title>Jogo do Juiz – Simulador Jurídico 6.0</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<!-- (código HTML completo aqui, igual ao enviado na resposta anterior) -->
+
+<style>
+:root{
+  --bg-dark:#020617;
+  --card:#020617cc;
+  --accent:#22c55e;
+  --accent-soft:#22c55e33;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
+  --danger:#ef4444;
+  --danger-soft:#ef444433;
+  --border:#1f2937;
+  --radius:18px;
+  --shadow-big:0 24px 60px rgba(0,0,0,.7);
+  --shadow-soft:0 18px 40px rgba(15,23,42,.9);
+  --blur-bg:blur(18px);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  background:#000;
+  color:var(--text);
+  font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  overflow:hidden;
+}
+
+.bg{
+  position:absolute;
+  inset:0;
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+  opacity:0;
+  transition:opacity .6s ease;
+}
+#bg-splash{background-image:url('capa.jpg');}
+#bg-office{background-image:url('escritorio.jpg');}
+#bg-trial{background-image:url('saladejulgamento.jpg');}
+#bg-stj{background-image:url('stjd.jpg');}
+
+.overlay{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(to bottom,rgba(0,0,0,.55),rgba(0,0,0,.9));
+  pointer-events:none;
+}
+
+.screen{
+  position:absolute;
+  inset:0;
+  padding:1rem;
+  display:none;
+  overflow-y:auto;
+}
+.screen.active{display:block;}
+
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:1.5rem;
+  backdrop-filter:var(--blur-bg);
+  max-width:520px;
+  width:100%;
+  margin:auto;
+  margin-top:2rem;
+  box-shadow:var(--shadow-big);
+}
+
+.btn{
+  border:none;
+  border-radius:999px;
+  padding:.65rem 1.2rem;
+  font-size:.9rem;
+  cursor:pointer;
+  font-weight:600;
+  transition:.15s;
+}
+.btn-primary{
+  background:var(--accent);
+  color:#022c22;
+}
+.btn-ghost{
+  background:#ffffff14;
+  color:var(--text);
+  border:1px solid #ffffff22;
+}
+
+.input{
+  width:100%;
+  background:#0f172a99;
+  border:1px solid #334155aa;
+  border-radius:14px;
+  padding:.6rem .7rem;
+  color:var(--text);
+  margin-top:.3rem;
+  font-size:.9rem;
+}
+
+.list{
+  max-height:400px;
+  overflow:auto;
+  padding-right:.4rem;
+}
+
+.case{
+  background:#0f172acc;
+  border:1px solid #1e293b;
+  border-radius:14px;
+  padding:.7rem;
+  margin-bottom:.6rem;
+}
+
+.jury-grid{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:.4rem;
+}
+.juror{
+  background:#0f172acc;
+  border:1px solid #1e293b;
+  border-radius:10px;
+  padding:.4rem;
+}
+.juror-bar{
+  width:100%;
+  height:.4rem;
+  background:#1e293b;
+  border-radius:999px;
+  margin-top:.2rem;
+}
+
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.75);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.modal.active{display:flex;}
+.modal-box{
+  background:#0f172af2;
+  border:1px solid #1e293b;
+  border-radius:18px;
+  padding:1.5rem;
+  max-width:680px;
+  width:90%;
+  max-height:85vh;
+  overflow:auto;
+}
+
+.typewriter{
+  overflow:hidden;
+  white-space:pre-wrap;
+  border-right:1px solid #fff;
+  animation:blink 1s infinite;
+}
+@keyframes blink{50%{border-color:transparent;}}
+
+</style>
 </head>
+
 <body>
-<p>Substitua este conteúdo pelo HTML completo gerado na resposta do ChatGPT.</p>
-</body>
-</html>
+
+<div id="bg-splash" class="bg"></div>
+<div id="bg-office" class="bg"></div>
+<div id="bg-trial" class="bg"></div>
+<div id="bg-stj" class="bg"></div>
+<div class="overlay"></div>
+
+<!-- ===================== TELA INICIAL ===================== -->
+<section id="tela-inicial" class="screen active">
+  <div class="card">
+    <h1 style="font-size:2rem;font-weight:700;">Jogo do Juiz 6.0</h1>
+    <p style="margin-top:.5rem;color:#cbd5e1;">Simulador jurídico com IA local, carreira, estudo e STJ.</p>
+
+    <div style="margin-top:1.2rem;display:flex;flex-direction:column;gap:.7rem;">
+      <button class="btn btn-primary" onclick="abrirTutorial()">Iniciar Jogo</button>
+      <button class="btn btn-ghost" onclick="abrirTutorial()">Como funciona o salvamento?</button>
+    </div>
+
+    <div style="margin-top:1rem;font-size:.8rem;color:#94a3b8;">
+      Modo carreira • Modo estudo • Relatório semestral • STJ
+    </div>
+  </div>
+</section>
+
+<!-- ===================== TUTORIAL ===================== -->
+<section id="tela-tutorial" class="screen">
+  <div class="card">
+    <h2>Tutorial de Salvamento</h2>
+    <p style="margin-top:.6rem;color:#cbd5e1;font-size:.9rem;">
+      O jogo salva automaticamente no seu navegador (localStorage).  
+      Você pode exportar e importar seu progresso a qualquer momento.
+    </p>
+
+    <ul style="color:#94a3b8;font-size:.85rem;margin-top:.7rem;margin-left:1rem;">
+      <li>Salvamento automático a cada julgamento concluído</li>
+      <li>Funciona offline</li>
+      <li>Importar e exportar saves</li>
+      <li>Nunca perde progresso sem querer</li>
+    </ul>
+
+    <div style="margin-top:1rem;display:flex;gap:.7rem;">
+      <button class="btn btn-primary" onclick="abrirLogin()">Avançar</button>
+      <button class="btn btn-ghost" onclick="voltarInicio()">Voltar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== LOGIN ===================== -->
+<section id="tela-login" class="screen">
+  <div class="card" style="max-width:680px;">
+    <h2>Configurar Perfil</h2>
+
+    <label>Nome do Juiz(a)</label>
+    <input id="nome" class="input" type="text">
+
+    <label style="margin-top:.7rem;">Idade</label>
+    <input id="idade" class="input" type="number">
+
+    <label style="margin-top:.7rem;">Estado</label>
+    <input id="estado" class="input" type="text">
+
+    <label style="margin-top:.7rem;">Cidade / Comarca</label>
+    <input id="cidade" class="input" type="text">
+
+    <label style="margin-top:.7rem;">Foto (avatar)</label>
+    <input id="avatar" class="input" type="file" accept="image/*">
+
+    <label style="margin-top:1rem;">Modo de jogo</label>
+    <select id="modo" class="input">
+      <option value="carreira">Carreira</option>
+      <option value="estudo">Estudo</option>
+      <option value="relatorio">Relatório</option>
+    </select>
+
+    <div style="margin-top:1rem;display:flex;gap:.7rem;">
+      <button class="btn btn-primary" onclick="salvarPerfil()">Entrar no Escritório</button>
+      <button class="btn btn-ghost" onclick="voltarInicio()">Voltar</button>
+    </div>
+  </div>
+</section>
+
+<!-- ===================== ESCOLHER TRIBUNAL ===================== -->
+<section id="tela-tribunal" class="screen">
+  <div class="card" style="max-width:720px;">
+    <h2>Escolher Tribunal</h2>
+
+    <div style="margin-top:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;">
+      <div class="case">
+        <h3>Criminal ⚖️</h3>
+        <p style="font-size:.85rem;color:#94a3b8;">Crimes, júri popular, provas, laudos.</p>
+        <button class="btn btn-primary" style="margin-top:.7rem;" onclick="selecionarTribunal('criminal')">Escolher</button>
+      </div>
+
+      <div class="case">
+        <h3>Família 👨‍👩‍👧</h3>
+        <p style="font-size:.85rem;color:#94a3b8;">Guarda, visitação, pensão, psicossocial.</p>
+        <button class="btn btn-primary" style="margin-top:.7rem;" onclick="selecionarTribunal('familia')">Escolher</button>
+      </div>
+
+      <div class="case">
+        <h3>Trabalhista 💼</h3>
+        <p style="font-size:.85rem;color:#94a3b8;">Vínculo, assédio, verbas, ponto eletrônico.</p>
+        <button class="btn btn-primary" style="margin-top:.7rem;" onclick="selecionarTribunal('trabalhista')">Escolher</button>
+      </div>
+    </div>
+
+    <button class="btn btn-ghost" style="margin-top:1rem;" onclick="voltarLogin()">Voltar</button>
+  </div>
+</section>
+
+<!-- ===================== ESCRITÓRIO ===================== -->
+<section id="tela-escritorio" class="screen">
+  <div style="padding:1rem;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h2>Escritório do Juiz</h2>
+        <div id="dados-juiz" style="font-size:.85rem;color:#94a3b8;margin-top:.3rem;">---</div>
+      </div>
+
+      <div style="display:flex;gap:.5rem;">
+        <button class="btn btn-ghost" onclick="exportarSave()">Exportar Save</button>
+        <button class="btn btn-ghost" onclick="abrirRelatorio()">Relatório</button>
+      </div>
+    </div>
+
+    <h3 style="margin-top:1.2rem;">Fila de Processos</h3>
+    <div id="lista-processos" class="list"></div>
+
+    <button class="btn btn-primary" style="margin-top:1rem;" onclick="voltarTribunal()">Trocar Tribunal</button>
+  </div>
+</section>
+
+<!-- ===================== SALA DE JULGAMENTO ===================== -->
+<section id="tela-julgamento" class="screen">
+  <div style="padding:1rem;">
+    <h2>Sala de Julgamento</h2>
+    <div id="titulo-caso" style="color:#94a3b8;font-size:.85rem;margin-top:.3rem;"></div>
+
+    <div style="margin-top:1rem;display:grid;grid-template-columns:2fr 1fr;gap:1rem;">
+
+      <div>
+        <button class="btn btn-ghost" onclick="ouvirAcusacao()">Ouvir Acusação</button>
+        <button class="btn btn-ghost" onclick="ouvirDefesa()">Ouvir Defesa</button>
+        <button class="btn btn-ghost" onclick="ouvirTestemunha()">Ouvir Testemunha</button>
+        <button class="btn btn-ghost" onclick="deliberarJuri()">Júri Popular</button>
+
+        <div id="fala-acusacao" class="case" style="display:none;margin-top:1rem;"></div>
+        <div id="fala-defesa" class="case" style="display:none;margin-top:1rem;"></div>
+        <div id="fala-testemunha" class="case" style="display:none;margin-top:1rem;"></div>
+
+        <div class="case" style="margin-top:1rem;">
+          <h3>Perguntar</h3>
+          <input id="pergunta" class="input" placeholder="Digite sua pergunta">
+          <button class="btn btn-primary" style="margin-top:.5rem;" onclick="perguntarIA()">Enviar</button>
+          <div id="resposta-ia" style="margin-top:.7rem;"></div>
+        </div>
+
+        <div class="case" style="margin-top:1rem;display:none;" id="veredito-box">
+          <button class="btn btn-danger" onclick="finalizarVeredito(true)">Condenar</button>
+          <button class="btn btn-primary" onclick="finalizarVeredito(false)">Absolver</button>
+        </div>
+      </div>
+
+      <div>
+        <h3>Provas</h3>
+        <div id="lista-provas" class="list"></div>
+
+        <h3 style="margin-top:1rem;">Júri Popular</h3>
+        <div id="jury" class="jury-grid"></div>
+      </div>
+
+    </div>
+
+    <button class="btn btn-ghost" style="margin-top:1rem;" onclick="voltarEscritorio()">Voltar</button>
+  </div>
+</section>
