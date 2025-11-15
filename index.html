@@ -532,14 +532,12 @@ function ProvaViewer({prova,onClose}) {
     </div>
   );
 }
-
 function Julgamento({
   caso, setCaso, onVoltar, profile, sons
 }) {
   const [falas,setFalas] = useState([]);
   const [pergunta,setPergunta] = useState("");
   const [provaSel,setProvaSel] = useState(null);
-  const [deliberando,setDeliberando] = useState(false);
 
   async function ouvir(ag){
     const fala = await iaFala(ag,caso,"");
@@ -550,15 +548,20 @@ function Julgamento({
   async function perguntarIA(){
     if(!pergunta.trim()) return;
     const fala = await iaFala("testemunha",caso,pergunta);
-    setFalas(f=>[...f,{autor:"juiz",texto:`Pergunta: ${pergunta}`},{autor:"test",texto:fala}]);
+    setFalas(f=>[
+      ...f,
+      {autor:"juiz",texto:`Pergunta: ${pergunta}`},
+      {autor:"testemunha",texto:fala}
+    ]);
     setPergunta("");
     sons.murmur.play();
   }
 
   function decidir(veredito){
     const acertou = veredito===caso.gabarito.culpado;
-    caso.status = veredito ? "condenado" : "absolvido";
-    setCaso({...caso});
+    const novoStatus = veredito ? "condenado" : "absolvido";
+    const atualizado = {...caso,status:novoStatus};
+    setCaso(atualizado);
     alert(acertou ? "Decisão correta!" : "Decisão incorreta.");
     onVoltar();
   }
@@ -576,8 +579,18 @@ function Julgamento({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
             <div className="space-x-2 mb-3">
-              <button onClick={()=>ouvir("acusacao")} className="px-3 py-1 bg-red-500/80 hover:bg-red-600 rounded-xl text-sm">Ouvir Acusação</button>
-              <button onClick={()=>ouvir("defesa")} className="px-3 py-1 bg-blue-500/80 hover:bg-blue-600 rounded-xl text-sm">Ouvir Defesa</button>
+              <button
+                onClick={()=>ouvir("acusacao")}
+                className="px-3 py-1 bg-red-500/80 hover:bg-red-600 rounded-xl text-sm"
+              >
+                Ouvir Acusação
+              </button>
+              <button
+                onClick={()=>ouvir("defesa")}
+                className="px-3 py-1 bg-blue-500/80 hover:bg-blue-600 rounded-xl text-sm"
+              >
+                Ouvir Defesa
+              </button>
             </div>
 
             <div className="max-h-80 overflow-y-auto space-y-3 pr-2">
@@ -646,198 +659,203 @@ function Julgamento({
       </div>
     </div>
   );
-  function App(){
-      const [screen,setScreen] = useState("splash");
-      const [profiles,setProfiles] = useState(()=>{
-        try{
-          const raw = localStorage.getItem("juiz_profiles");
-          return raw ? JSON.parse(raw) : {};
-        }catch(e){
-          return {};
-        }
-      });
-      const [currentProfileId,setCurrentProfileId] = useState(null);
-      const [cases,setCases] = useState(()=>seedCases());
-      const [currentCase,setCurrentCase] = useState(null);
+}
 
-      const sons = {
-        gavel: useSound(SOUND_URLS.gavel,true,0.8),
-        murmur: useSound(SOUND_URLS.murmur,true,0.4),
-      };
+// ---------------- APP PRINCIPAL ----------------
+function App(){
+  const [screen,setScreen] = useState("splash");
+  const [profiles,setProfiles] = useState(()=>{
+    try{
+      const raw = localStorage.getItem("juiz_profiles");
+      return raw ? JSON.parse(raw) : {};
+    }catch(e){
+      return {};
+    }
+  });
+  const [currentProfileId,setCurrentProfileId] = useState(null);
+  const [cases,setCases] = useState(()=>seedCases());
+  const [currentCase,setCurrentCase] = useState(null);
 
-      useEffect(()=>{
-        try{
-          localStorage.setItem("juiz_profiles",JSON.stringify(profiles));
-        }catch(e){}
-      },[profiles]);
+  const sons = {
+    gavel: useSound(SOUND_URLS.gavel,true,0.8),
+    murmur: useSound(SOUND_URLS.murmur,true,0.4),
+  };
 
-      const currentProfile = currentProfileId ? profiles[currentProfileId] : null;
+  useEffect(()=>{
+    try{
+      localStorage.setItem("juiz_profiles",JSON.stringify(profiles));
+    }catch(e){}
+  },[profiles]);
 
-      function handleEnterProfiles(){
-        setScreen("court");
-      }
+  const currentProfile = currentProfileId ? profiles[currentProfileId] : null;
 
-      function handleSelectCourt(courtId){
-        if(!currentProfile) return;
-        const updated = {...currentProfile, court: courtId};
-        setProfiles(prev=>({...prev,[currentProfileId]:updated}));
-        setScreen("location");
-      }
+  function handleEnterProfiles(){
+    setScreen("court");
+  }
 
-      function handleLocationSelect(estado,cidade){
-        if(!currentProfile) return;
-        const updated = {...currentProfile, estado, cidade};
-        setProfiles(prev=>({...prev,[currentProfileId]:updated}));
-        setScreen("office");
-      }
+  function handleSelectCourt(courtId){
+    if(!currentProfile) return;
+    const updated = {...currentProfile, court: courtId};
+    setProfiles(prev=>({...prev,[currentProfileId]:updated}));
+    setScreen("location");
+  }
 
-      function handleSelectCase(caseId){
-        const c = cases.find(x=>x.id===caseId);
-        if(!c) return;
-        setCurrentCase(c);
-        setScreen("trial");
-      }
+  function handleLocationSelect(estado,cidade){
+    if(!currentProfile) return;
+    const updated = {...currentProfile, estado, cidade};
+    setProfiles(prev=>({...prev,[currentProfileId]:updated}));
+    setScreen("office");
+  }
 
-      function handleUpdateCase(updatedCase){
-        setCases(prev=>prev.map(c=>c.id===updatedCase.id ? updatedCase : c));
-        setCurrentCase(updatedCase);
-        if(currentProfileId){
-          const prof = profiles[currentProfileId];
-          const julgados = (prof.stats?.julgados || 0) + 1;
-          const acertos = (prof.stats?.acertos || 0) + (updatedCase.status === (updatedCase.gabarito.culpado ? "condenado" : "absolvido") ? 1 : 0);
-          const prestigio = Math.min(100, Math.round((acertos/(julgados||1))*80));
-          const newStats = { ...(prof.stats||{}), julgados, acertos, prestigio };
-          setProfiles(prev=>({...prev,[currentProfileId]:{...prof,stats:newStats}}));
-        }
-      }
+  function handleSelectCase(caseId){
+    const c = cases.find(x=>x.id===caseId);
+    if(!c) return;
+    setCurrentCase(c);
+    setScreen("trial");
+  }
 
-      function handleBackToOffice(){
-        setScreen("office");
-      }
+  function handleUpdateCase(updatedCase){
+    setCases(prev=>prev.map(c=>c.id===updatedCase.id ? updatedCase : c));
+    setCurrentCase(updatedCase);
+    if(currentProfileId){
+      const prof = profiles[currentProfileId];
+      const julgados = (prof.stats?.julgados || 0) + 1;
+      const acertos = (prof.stats?.acertos || 0)
+        + (updatedCase.status === (updatedCase.gabarito.culpado ? "condenado" : "absolvido") ? 1 : 0);
+      const prestigio = Math.min(100, Math.round((acertos/(julgados||1))*80));
+      const newStats = { ...(prof.stats||{}), julgados, acertos, prestigio };
+      setProfiles(prev=>({...prev,[currentProfileId]:{...prof,stats:newStats}}));
+    }
+  }
 
-      function handleRelatorio(){
-        setScreen("relatorio");
-      }
+  function handleBackToOffice(){
+    setScreen("office");
+  }
 
-      function handleSTJ(){
-        setScreen("stj");
-      }
+  function handleRelatorio(){
+    setScreen("relatorio");
+  }
 
-      function handlePromoverSTJ(){
-        if(!currentProfileId) return;
-        const prof = profiles[currentProfileId];
-        const updated = {...prof, court: "stj"};
-        setProfiles(prev=>({...prev,[currentProfileId]:updated}));
-        setScreen("office");
-      }
+  function handleSTJ(){
+    setScreen("stj");
+  }
 
-      // Navegação de telas
-      if(screen === "splash"){
-        return <SplashScreen onStart={()=>setScreen("tutorial")} />;
-      }
+  function handlePromoverSTJ(){
+    if(!currentProfileId) return;
+    const prof = profiles[currentProfileId];
+    const updated = {...prof, court: "stj"};
+    setProfiles(prev=>({...prev,[currentProfileId]:updated}));
+    setScreen("office");
+  }
 
-      if(screen === "tutorial"){
-        return <TutorialSalvamento onContinuar={()=>setScreen("login")} />;
-      }
+  if(screen === "splash"){
+    return <SplashScreen onStart={()=>setScreen("tutorial")} />;
+  }
 
-      if(screen === "login"){
-        return (
-          <LoginScreen
-            profiles={profiles}
-            setProfiles={setProfiles}
-            setCurrentProfile={setCurrentProfileId}
-            onEnter={handleEnterProfiles}
-          />
-        );
-      }
+  if(screen === "tutorial"){
+    return <TutorialSalvamento onContinuar={()=>setScreen("login")} />;
+  }
 
-      if(!currentProfile){
-        return (
-          <div className="min-h-screen bg-black text-white flex items-center justify-center">
-            <div className="text-center">
-              <p className="mb-4">Nenhum perfil selecionado.</p>
-              <button
-                onClick={()=>setScreen("login")}
-                className="px-4 py-2 bg-emerald-500 rounded-xl"
-              >
-                Voltar ao login
-              </button>
-            </div>
-          </div>
-        );
-      }
+  if(screen === "login"){
+    return (
+      <LoginScreen
+        profiles={profiles}
+        setProfiles={setProfiles}
+        setCurrentProfile={setCurrentProfileId}
+        onEnter={handleEnterProfiles}
+      />
+    );
+  }
 
-      if(screen === "court"){
-        return <CourtSelectScreen onSelectCourt={handleSelectCourt} />;
-      }
-
-      if(screen === "location"){
-        return (
-          <LocationSelect
-            profile={currentProfile}
-            onSelectLocation={handleLocationSelect}
-          />
-        );
-      }
-
-      if(screen === "office"){
-        const filteredCases = cases.filter(c=>c.tipo === (currentProfile.court || "criminal"));
-        return (
-          <Escritorio
-            profile={currentProfile}
-            cases={filteredCases}
-            onSelectCase={handleSelectCase}
-            onSTJ={handleSTJ}
-            onRelatorio={handleRelatorio}
-            sons={sons}
-          />
-        );
-      }
-
-      if(screen === "trial" && currentCase){
-        return (
-          <Julgamento
-            caso={currentCase}
-            setCaso={handleUpdateCase}
-            onVoltar={handleBackToOffice}
-            profile={currentProfile}
-            sons={sons}
-          />
-        );
-      }
-
-      if(screen === "relatorio"){
-        return (
-          <RelatorioScreen
-            profile={currentProfile}
-            cases={cases.filter(c=>c.tipo===(currentProfile.court||"criminal"))}
-            onVoltar={handleBackToOffice}
-          />
-        );
-      }
-
-      if(screen === "stj"){
-        return (
-          <STJScreen
-            profile={currentProfile}
-            onPromover={handlePromoverSTJ}
-            onVoltar={handleBackToOffice}
-          />
-        );
-      }
-
-      return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+  if(!currentProfile){
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <p className="mb-4">Nenhum perfil selecionado.</p>
           <button
-            onClick={()=>setScreen("splash")}
-            className="px-4 py-2 rounded-xl bg-emerald-500"
+            onClick={()=>setScreen("login")}
+            className="px-4 py-2 bg-emerald-500 rounded-xl"
           >
-            Reiniciar jogo
+            Voltar ao login
           </button>
         </div>
-      );
+      </div>
+    );
   }
-            }function RelatorioScreen({profile,onVoltar,cases}) {
+
+  if(screen === "court"){
+    return <CourtSelectScreen onSelectCourt={handleSelectCourt} />;
+  }
+
+  if(screen === "location"){
+    return (
+      <LocationSelect
+        profile={currentProfile}
+        onSelectLocation={handleLocationSelect}
+      />
+    );
+  }
+
+  if(screen === "office"){
+    const filteredCases = cases.filter(c=>c.tipo === (currentProfile.court || "criminal"));
+    return (
+      <Escritorio
+        profile={currentProfile}
+        cases={filteredCases}
+        onSelectCase={handleSelectCase}
+        onSTJ={handleSTJ}
+        onRelatorio={handleRelatorio}
+        sons={sons}
+      />
+    );
+  }
+
+  if(screen === "trial" && currentCase){
+    return (
+      <Julgamento
+        caso={currentCase}
+        setCaso={handleUpdateCase}
+        onVoltar={handleBackToOffice}
+        profile={currentProfile}
+        sons={sons}
+      />
+    );
+  }
+
+  if(screen === "relatorio"){
+    return (
+      <RelatorioScreen
+        profile={currentProfile}
+        cases={cases.filter(c=>c.tipo===(currentProfile.court||"criminal"))}
+        onVoltar={handleBackToOffice}
+      />
+    );
+  }
+
+  if(screen === "stj"){
+    return (
+      <STJScreen
+        profile={currentProfile}
+        onPromover={handlePromoverSTJ}
+        onVoltar={handleBackToOffice}
+      />
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <button
+        onClick={()=>setScreen("splash")}
+        className="px-4 py-2 rounded-xl bg-emerald-500"
+      >
+        Reiniciar jogo
+      </button>
+    </div>
+  );
+}
+
+// ---------------- RELATÓRIO E STJ ----------------
+function RelatorioScreen({profile,onVoltar,cases}) {
   const julgados = cases.filter(c=>c.status!=="na_fila");
   const acertos = profile.stats.acertos || 0;
   const prestigio = profile.stats.prestigio || 0;
@@ -900,6 +918,3 @@ function STJScreen({profile,onPromover,onVoltar}) {
 
 const ROOT = ReactDOM.createRoot(document.getElementById("root"));
 ROOT.render(<App/>);
-</script>
-</body>
-</html>
