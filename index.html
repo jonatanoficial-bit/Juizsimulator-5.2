@@ -646,6 +646,197 @@ function Julgamento({
       </div>
     </div>
   );
+  function App(){
+      const [screen,setScreen] = useState("splash");
+      const [profiles,setProfiles] = useState(()=>{
+        try{
+          const raw = localStorage.getItem("juiz_profiles");
+          return raw ? JSON.parse(raw) : {};
+        }catch(e){
+          return {};
+        }
+      });
+      const [currentProfileId,setCurrentProfileId] = useState(null);
+      const [cases,setCases] = useState(()=>seedCases());
+      const [currentCase,setCurrentCase] = useState(null);
+
+      const sons = {
+        gavel: useSound(SOUND_URLS.gavel,true,0.8),
+        murmur: useSound(SOUND_URLS.murmur,true,0.4),
+      };
+
+      useEffect(()=>{
+        try{
+          localStorage.setItem("juiz_profiles",JSON.stringify(profiles));
+        }catch(e){}
+      },[profiles]);
+
+      const currentProfile = currentProfileId ? profiles[currentProfileId] : null;
+
+      function handleEnterProfiles(){
+        setScreen("court");
+      }
+
+      function handleSelectCourt(courtId){
+        if(!currentProfile) return;
+        const updated = {...currentProfile, court: courtId};
+        setProfiles(prev=>({...prev,[currentProfileId]:updated}));
+        setScreen("location");
+      }
+
+      function handleLocationSelect(estado,cidade){
+        if(!currentProfile) return;
+        const updated = {...currentProfile, estado, cidade};
+        setProfiles(prev=>({...prev,[currentProfileId]:updated}));
+        setScreen("office");
+      }
+
+      function handleSelectCase(caseId){
+        const c = cases.find(x=>x.id===caseId);
+        if(!c) return;
+        setCurrentCase(c);
+        setScreen("trial");
+      }
+
+      function handleUpdateCase(updatedCase){
+        setCases(prev=>prev.map(c=>c.id===updatedCase.id ? updatedCase : c));
+        setCurrentCase(updatedCase);
+        if(currentProfileId){
+          const prof = profiles[currentProfileId];
+          const julgados = (prof.stats?.julgados || 0) + 1;
+          const acertos = (prof.stats?.acertos || 0) + (updatedCase.status === (updatedCase.gabarito.culpado ? "condenado" : "absolvido") ? 1 : 0);
+          const prestigio = Math.min(100, Math.round((acertos/(julgados||1))*80));
+          const newStats = { ...(prof.stats||{}), julgados, acertos, prestigio };
+          setProfiles(prev=>({...prev,[currentProfileId]:{...prof,stats:newStats}}));
+        }
+      }
+
+      function handleBackToOffice(){
+        setScreen("office");
+      }
+
+      function handleRelatorio(){
+        setScreen("relatorio");
+      }
+
+      function handleSTJ(){
+        setScreen("stj");
+      }
+
+      function handlePromoverSTJ(){
+        if(!currentProfileId) return;
+        const prof = profiles[currentProfileId];
+        const updated = {...prof, court: "stj"};
+        setProfiles(prev=>({...prev,[currentProfileId]:updated}));
+        setScreen("office");
+      }
+
+      // Navegação de telas
+      if(screen === "splash"){
+        return <SplashScreen onStart={()=>setScreen("tutorial")} />;
+      }
+
+      if(screen === "tutorial"){
+        return <TutorialSalvamento onContinuar={()=>setScreen("login")} />;
+      }
+
+      if(screen === "login"){
+        return (
+          <LoginScreen
+            profiles={profiles}
+            setProfiles={setProfiles}
+            setCurrentProfile={setCurrentProfileId}
+            onEnter={handleEnterProfiles}
+          />
+        );
+      }
+
+      if(!currentProfile){
+        return (
+          <div className="min-h-screen bg-black text-white flex items-center justify-center">
+            <div className="text-center">
+              <p className="mb-4">Nenhum perfil selecionado.</p>
+              <button
+                onClick={()=>setScreen("login")}
+                className="px-4 py-2 bg-emerald-500 rounded-xl"
+              >
+                Voltar ao login
+              </button>
+            </div>
+          </div>
+        );
+      }
+
+      if(screen === "court"){
+        return <CourtSelectScreen onSelectCourt={handleSelectCourt} />;
+      }
+
+      if(screen === "location"){
+        return (
+          <LocationSelect
+            profile={currentProfile}
+            onSelectLocation={handleLocationSelect}
+          />
+        );
+      }
+
+      if(screen === "office"){
+        const filteredCases = cases.filter(c=>c.tipo === (currentProfile.court || "criminal"));
+        return (
+          <Escritorio
+            profile={currentProfile}
+            cases={filteredCases}
+            onSelectCase={handleSelectCase}
+            onSTJ={handleSTJ}
+            onRelatorio={handleRelatorio}
+            sons={sons}
+          />
+        );
+      }
+
+      if(screen === "trial" && currentCase){
+        return (
+          <Julgamento
+            caso={currentCase}
+            setCaso={handleUpdateCase}
+            onVoltar={handleBackToOffice}
+            profile={currentProfile}
+            sons={sons}
+          />
+        );
+      }
+
+      if(screen === "relatorio"){
+        return (
+          <RelatorioScreen
+            profile={currentProfile}
+            cases={cases.filter(c=>c.tipo===(currentProfile.court||"criminal"))}
+            onVoltar={handleBackToOffice}
+          />
+        );
+      }
+
+      if(screen === "stj"){
+        return (
+          <STJScreen
+            profile={currentProfile}
+            onPromover={handlePromoverSTJ}
+            onVoltar={handleBackToOffice}
+          />
+        );
+      }
+
+      return (
+        <div className="min-h-screen bg-black text-white flex items-center justify-center">
+          <button
+            onClick={()=>setScreen("splash")}
+            className="px-4 py-2 rounded-xl bg-emerald-500"
+          >
+            Reiniciar jogo
+          </button>
+        </div>
+      );
+  }
             }function RelatorioScreen({profile,onVoltar,cases}) {
   const julgados = cases.filter(c=>c.status!=="na_fila");
   const acertos = profile.stats.acertos || 0;
