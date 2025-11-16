@@ -4,13 +4,15 @@
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Jogo do Juiz — Vale Produção</title>
-  <!-- React 18 UMD -->
+
+  <!-- React + Babel -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <!-- Babel -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Tailwind via CDN -->
+
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
+
   <style>
     html,body,#root{height:100%;}
     body{
@@ -20,16 +22,16 @@
       font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
     .scroll-thin::-webkit-scrollbar{width:6px;}
-    .scroll-thin::-webkit-scrollbar-thumb{background:#4b5563;border-radius:999px;}
+    .scroll-thin::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:999px;}
   </style>
 </head>
 <body>
-<div id="root"></div>
+  <div id="root"></div>
 
-<script type="text/babel">
-const {useState,useEffect,useRef} = React;
+  <script type="text/babel">
+const { useState, useEffect, useRef } = React;
 
-/* ===================== DADOS FIXOS ===================== */
+/* ========= DADOS FIXOS ========= */
 
 const ESTADOS = {
   "AC":["Rio Branco"],"AL":["Maceió"],"AP":["Macapá"],"AM":["Manaus"],
@@ -51,179 +53,169 @@ const SOUND_URLS = {
   murmur:"https://cdn.pixabay.com/download/audio/2021/09/16/audio_7b4b2d7f6c.mp3?filename=crowd-murmur-ambient-75537.mp3"
 };
 
-function useSound(url, enabled=true, volume=0.6){
+function useSound(url, enabled=true, volume=0.7){
   const ref = useRef(null);
   useEffect(()=>{
     const a = new Audio(url);
     a.volume = volume;
     ref.current = a;
-    return ()=>{a.pause();ref.current=null;};
+    return ()=>{ a.pause(); ref.current=null; };
   },[url]);
-  const play = ()=>{ if(enabled && ref.current){ref.current.currentTime=0;ref.current.play();} };
-  return {play};
+  const play = ()=>{ if(enabled && ref.current){ ref.current.currentTime=0; ref.current.play(); } };
+  return { play };
 }
 
-/* ===================== SEED DE CASOS ===================== */
+/* ========= GERADOR DE CASOS ========= */
 
 function seedCases(){
-  const casos = [];
-  let idSeq = 1;
+  const casos=[];
+  let id=1;
 
-  function addLote(tipo,baseTitulo,baseResumo,culpado,qtde){
-    for(let i=1;i<=qtde;i++){
-      casos.push({
-        id:`${tipo}-${idSeq++}`,
-        tipo,
-        titulo:`${baseTitulo} #${i}`,
-        resumo:baseResumo,
-        gabarito:{culpado},
-        status:"na_fila",
-        provas:[
-          {id:"E1",tipo:"bo",titulo:"Boletim de ocorrência",conteudo:"Registro oficial do fato com identificação das partes, local, data e dinâmica resumida."},
-          {id:"E2",tipo:"laudo",titulo:"Laudo pericial",conteudo:"Análise técnica de vestígios materiais, com descrição de lesões, danos ou circunstâncias objetivas."},
-          {id:"E3",tipo:"pericia",titulo:"Perícia complementar",conteudo:"Relatório complementar com cruzamento de imagens, depoimentos e dados periciais."}
-        ]
-      });
-    }
+  function addLote(tipo, modelos){
+    modelos.forEach(m=>{
+      for(let i=0;i<5;i++){
+        const provasBase = [
+          {
+            id:"E1",
+            titulo:"Boletim de ocorrência",
+            tipo:"boletim",
+            conteudo:"Registro oficial do fato com horário, local e identificação das partes."
+          },
+          {
+            id:"E2",
+            titulo:"Laudo pericial",
+            tipo:"laudo",
+            conteudo:"Documento técnico elaborado por perito habilitado, descrevendo danos, circunstâncias e metodologia."
+          },
+          {
+            id:"E3",
+            titulo:"Depoimento de testemunha",
+            tipo:"testemunha",
+            conteudo:"Relato de pessoa que presenciou parte dos acontecimentos, com pontos fortes e fragilidades."
+          }
+        ];
+        casos.push({
+          id: tipo+"-"+(id++),
+          tipo,
+          titulo: m.titulo+" #"+(i+1),
+          resumo: m.resumo,
+          gabarito: { culpado: m.culpado },
+          provas: provasBase,
+          status:"na_fila"
+        });
+      }
+    });
   }
 
-  // 100 casos criminais
-  addLote("criminal",
-    "Homicídio simples em briga de bar",
-    "Discussão em estabelecimento que evolui para agressões físicas e resultado morte, com controvérsia sobre legítima defesa.",
-    true,50);
-  addLote("criminal",
-    "Roubo em via pública com arma simulada",
-    "Subtração de bens com grave ameaça, arma aparentemente verdadeira e reconhecimento da autoria em juízo.",
-    true,50);
-
-  // 100 família
-  addLote("familia",
-    "Revisão de alimentos",
-    "Pedido de adequação do valor da pensão alimentícia em razão de mudança econômica das partes.",
-    false,50);
-  addLote("familia",
-    "Guarda compartilhada e regime de convivência",
-    "Definição de residência de referência da criança e calendário de convivência com o outro genitor.",
-    false,50);
-
-  // 100 trabalhista
-  addLote("trabalhista",
-    "Horas extras habituais",
-    "Trabalhador alega prestação habitual de horas extras sem o devido pagamento ou compensação.",
-    false,50);
-  addLote("trabalhista",
-    "Vínculo de emprego disfarçado como PJ",
-    "Discussão sobre subordinação, pessoalidade, habitualidade e onerosidade em contrato formalmente de prestação de serviços.",
-    false,50);
-
-  // Casos STJ (recurso)
-  function addSTJ(titulo,resumo,culpado,qtde){
-    for(let i=1;i<=qtde;i++){
-      casos.push({
-        id:`stj-${idSeq++}`,
-        tipo:"stj",
-        titulo:`${titulo} #${i}`,
-        resumo,
-        gabarito:{culpado},
-        status:"na_fila",
-        provas:[
-          {id:"R1",tipo:"doc",titulo:"Acórdão recorrido",conteudo:"Trecho principal do acórdão recorrido com fundamentação jurídica questionada."},
-          {id:"R2",tipo:"doc",titulo:"Peça recursal",conteudo:"Argumentos centrais da parte recorrente acerca de violação de lei federal."}
-        ]
-      });
+  addLote("criminal",[
+    {
+      titulo:"Homicídio simples em briga de bar",
+      resumo:"Discussão em estabelecimento que evolui para agressões físicas graves, culminando em morte de um dos envolvidos.",
+      culpado:true
+    },
+    {
+      titulo:"Roubo em via pública",
+      resumo:"Agente aborda vítima em via pública, subtraindo celular com emprego de ameaça mediante simulacro de arma.",
+      culpado:true
+    },
+    {
+      titulo:"Lesão corporal em violência doméstica",
+      resumo:"Conflito entre casal em residência, com alegação de legítima defesa e histórico de agressões anteriores.",
+      culpado:true
     }
-  }
+  ]);
 
-  addSTJ("Recurso especial em matéria penal",
-    "Discussão sobre dosimetria da pena e interpretação de dispositivo de lei federal.",
-    true,15);
-  addSTJ("Recurso especial em matéria de família",
-    "Controvérsia sobre fixação de alimentos à luz da legislação federal.",
-    false,15);
+  addLote("familia",[
+    {
+      titulo:"Revisão de alimentos",
+      resumo:"Genitor requer redução de pensão alimentícia em razão de perda de emprego e novo filho em outro relacionamento.",
+      culpado:false
+    },
+    {
+      titulo:"Guarda compartilhada",
+      resumo:"Pais discutem residência principal da criança e regime de convivência, ambos aptos e envolvidos na criação.",
+      culpado:false
+    },
+    {
+      titulo:"Regulamentação de visitas com medida protetiva",
+      resumo:"Histórico de conflitos intensos gera medida protetiva; discute-se visitas supervisionadas em espaço neutro.",
+      culpado:false
+    }
+  ]);
+
+  addLote("trabalhista",[
+    {
+      titulo:"Horas extras habituais",
+      resumo:"Empregado alega jornada diária superior à contratual sem o devido pagamento de horas extras e reflexos.",
+      culpado:false
+    },
+    {
+      titulo:"Vínculo de emprego X PJ",
+      resumo:"Trabalhador contratado como pessoa jurídica afirma subordinação, habitualidade, pessoalidade e onerosidade.",
+      culpado:false
+    },
+    {
+      titulo:"Assédio moral no ambiente de trabalho",
+      resumo:"Supervisor dirige reiteradas humilhações em público, alegando apenas cobrança por desempenho.",
+      culpado:false
+    }
+  ]);
 
   return casos;
 }
 
-/* ===================== IA SIMULADA ===================== */
+/* ========= IA SIMULADA & TYPEWRITER ========= */
 
-function extrairPalavrasChave(txt){
-  return txt.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .split(/[^a-z0-9]+/).filter(Boolean);
-}
-
-async function iaFala(agente,caso,pergunta=""){
-  const chaves = extrairPalavrasChave(pergunta);
+async function iaFala(agente, caso, pergunta=""){
   const resumo = caso.resumo;
-  let focoExtra = "";
+  const prefixo =
+    agente==="acusacao" ? "ACUSAÇÃO — " :
+    agente==="defesa" ? "DEFESA — " :
+    "TESTEMUNHA — ";
 
-  if(chaves.includes("testemunha")||chaves.includes("versao")||chaves.includes("contradicao")){
-    focoExtra = " As partes comentam especificamente sobre a coerência e eventuais contradições dos depoimentos das testemunhas.";
-  }else if(chaves.includes("laudo")||chaves.includes("pericia")){
-    focoExtra = " O debate volta-se aos aspectos técnicos do laudo pericial e à solidez científica das conclusões.";
-  }else if(chaves.includes("alimento")||chaves.includes("pensao")||chaves.includes("guarda")){
-    focoExtra = " A discussão enfatiza o melhor interesse da criança e o equilíbrio entre as possibilidades e necessidades.";
-  }else if(chaves.includes("horas")||chaves.includes("jornada")||chaves.includes("vinculo")){
-    focoExtra = " As falas concentram-se nos elementos fáticos da relação de trabalho, como subordinação e habitualidade.";
-  }else if(chaves.includes("recurso")||chaves.includes("acordao")||chaves.includes("lei federal")){
-    focoExtra = " No STJ, o foco recai na correta interpretação da lei federal e na uniformização da jurisprudência.";
-  }
+  const foco = pergunta
+    ? 'Respondendo à pergunta do Juiz: "'+pergunta+'". '
+    : "Expondo os principais pontos do processo. ";
 
-  let prefixo = "";
-  let base = "";
+  const base =
+    agente==="acusacao"
+      ? "A acusação destaca a coerência das provas e a gravidade do fato, defendendo a responsabilização do réu nos limites da lei. "
+      : agente==="defesa"
+        ? "A defesa enfatiza contradições, lacunas probatórias e o princípio do in dubio pro reo, buscando afastar a condenação. "
+        : "A testemunha descreve o que viu e ouviu, sem assumir posição jurídica, mas ajudando a reconstruir a dinâmica dos fatos. ";
 
-  if(agente==="acusacao"){
-    prefixo = "ACUSAÇÃO — ";
-    base = "sustenta que o conjunto probatório, analisado em sua globalidade, é suficiente para responsabilizar o réu, observando o padrão de prova exigido na legislação.";
-  }else if(agente==="defesa"){
-    prefixo = "DEFESA — ";
-    base = "salienta lacunas, contradições e interpretações alternativas das provas, insistindo na aplicação do princípio da dúvida razoável em favor do acusado.";
-  }else{
-    prefixo = "TESTEMUNHA — ";
-    base = "relata o que presenciou com riqueza de detalhes, reconhecendo os limites de sua memória e percepção, sem emitir juízo jurídico definitivo.";
-  }
-
-  const partePergunta = pergunta
-    ? `Em resposta à pergunta do Juiz: "${pergunta}", `
-    : "";
-
-  const texto = `${prefixo}${partePergunta}${base}${focoExtra} Resumo do caso: ${resumo}`;
-
+  const texto = prefixo + foco + base + "Resumo do caso: " + resumo;
   await new Promise(r=>setTimeout(r,300));
   return texto;
 }
 
-/* ===================== COMPONENTES VISUAIS ===================== */
-
-function TypewriterText({text,speed=15}){
-  const [shown,setShown] = useState("");
+function TypewriterText({text,speed=18}){
+  const [display,setDisplay]=useState("");
   useEffect(()=>{
     let i=0;
-    setShown("");
-    const id = setInterval(()=>{
+    setDisplay("");
+    if(!text) return;
+    const id=setInterval(()=>{
       i++;
-      setShown(text.slice(0,i));
+      setDisplay(text.slice(0,i));
       if(i>=text.length) clearInterval(id);
     },speed);
     return ()=>clearInterval(id);
   },[text,speed]);
-  return <span>{shown}</span>;
+  return <span>{display}</span>;
 }
 
-/* ---------- Splash ---------- */
+/* ========= TELAS ========= */
+
 function SplashScreen({onStart}){
   return (
     <div className="min-h-screen flex items-center justify-center bg-black">
       <div className="relative w-full max-w-md h-[520px] rounded-3xl overflow-hidden shadow-2xl">
-        <div
-          className="absolute inset-0"
-          style={{backgroundImage:"url('capa.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
-        ></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent"></div>
-        <div className="relative z-10 h-full flex flex-col items-center justify-end pb-10 px-6 text-center">
-          <h1 className="text-3xl font-bold mb-1 drop-shadow-lg">Tribunal</h1>
-          <p className="text-xl font-semibold mb-3 drop-shadow-lg">Simulador de Juiz</p>
-          <p className="text-xs opacity-90 mb-4">Vale Produção • Versão 6.0 (protótipo educacional)</p>
+        <div className="absolute inset-0 bg-[url('capa.jpg')] bg-cover bg-center" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
+        <div className="relative z-10 h-full flex flex-col items-center justify-end pb-10 px-6">
+          <h1 className="text-3xl font-bold mb-1 drop-shadow-lg text-center">Jogo do Juiz</h1>
+          <p className="text-sm opacity-90 mb-4 text-center">Vale Produção • Simulador Educacional</p>
           <button
             onClick={onStart}
             className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold shadow-xl"
@@ -236,19 +228,18 @@ function SplashScreen({onStart}){
   );
 }
 
-/* ---------- Tutorial de salvamento ---------- */
 function TutorialSalvamento({onContinuar}){
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-black text-white">
       <div className="max-w-xl w-full mx-4 p-6 rounded-3xl bg-white/5 border border-white/10 backdrop-blur">
         <h2 className="text-2xl font-bold mb-3">Como o jogo salva seu progresso</h2>
         <ol className="list-decimal pl-5 space-y-2 text-sm">
-          <li>Seu avanço é salvo automaticamente no navegador (localStorage) a cada julgamento concluído.</li>
-          <li>Na tela de login você pode <b>exportar</b> um arquivo (.json) com todos os perfis.</li>
-          <li>Em outro computador ou celular, use o botão <b>Importar save</b> para continuar exatamente de onde parou.</li>
+          <li>Seu progresso fica salvo automaticamente no próprio navegador (carreira do juiz).</li>
+          <li>Você pode exportar um arquivo de backup pela tela de login.</li>
+          <li>Em outro computador ou celular, importe o arquivo para continuar do ponto em que parou.</li>
         </ol>
         <p className="mt-4 text-xs opacity-80">
-          Dica: use sempre o mesmo nome de usuário (por exemplo: <b>DraMaria</b>) para manter sua carreira organizada.
+          Dica: use sempre o mesmo nome de usuário (ex.: <b>DraMaria</b>) para acompanhar sua evolução.
         </p>
         <button
           onClick={onContinuar}
@@ -261,28 +252,56 @@ function TutorialSalvamento({onContinuar}){
   );
 }
 
-/* ---------- Login ---------- */
-function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEnter}){
-  const [user,setUser] = useState(currentProfile||"");
-  const [file,setFile] = useState(null);
+function AvatarPicker({avatar,setAvatar}){
+  const lista=[1,2,3,4,5,6].map(i=>`avatar${i}.jpg`);
+  return (
+    <div className="mt-4">
+      <div className="text-xs mb-1 opacity-80">Escolha seu avatar de Juiz(a):</div>
+      <div className="flex flex-wrap gap-2">
+        {lista.map(src=>(
+          <button
+            key={src}
+            type="button"
+            onClick={()=>setAvatar(src)}
+            className={
+              "border rounded-2xl overflow-hidden w-14 h-14 "+(avatar===src?"border-emerald-400 ring-2 ring-emerald-500":"border-white/20")
+            }
+          >
+            <img src={src} className="w-full h-full object-cover" alt={src}/>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LoginScreen({profiles,setProfiles,setCurrentProfile,onEnter}){
+  const [user,setUser]=useState("");
+  const [file,setFile]=useState(null);
+  const [avatar,setAvatar]=useState("avatar1.jpg");
+
+  function salvarProfiles(p){
+    setProfiles(p);
+    localStorage.setItem("juiz_profiles",JSON.stringify(p));
+  }
 
   function handleEnter(){
     if(!user.trim()) return;
-    const nome = user.trim();
-    let updated = {...profiles};
-    if(!updated[nome]){
-      updated[nome] = {
-        nome,
-        avatar:null,
-        court:null,
-        estado:"SP",
-        cidade:"São Paulo",
-        stats:{julgados:0,acertos:0,prestigio:0,criminal:0,familia:0,trabalhista:0,stj:0},
-        historico:[]
-      };
+    const nome=user.trim();
+    const atual = profiles[nome];
+    const novoProfile = atual || {
+      nome,
+      avatar,
+      court:null,
+      estado:"SP",
+      cidade:"São Paulo",
+      stats:{julgados:0,acertos:0,prestigio:0}
+    };
+    if(!atual){
+      salvarProfiles({...profiles,[nome]:novoProfile});
+    }else if(!atual.avatar){
+      salvarProfiles({...profiles,[nome]:{...atual,avatar}});
     }
-    setProfiles(updated);
-    localStorage.setItem("juiz_profiles_v6",JSON.stringify(updated));
     setCurrentProfile(nome);
     onEnter();
   }
@@ -305,8 +324,7 @@ function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEn
     reader.onload=e=>{
       try{
         const data=JSON.parse(e.target.result);
-        setProfiles(data);
-        localStorage.setItem("juiz_profiles_v6",JSON.stringify(data));
+        salvarProfiles(data);
         alert("Save importado com sucesso!");
       }catch(err){
         alert("Arquivo inválido.");
@@ -316,15 +334,12 @@ function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEn
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center"
-      style={{backgroundImage:"url('capa.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
-    >
+    <div className="min-h-screen bg-[url('capa.jpg')] bg-cover bg-center flex items-center justify-center">
       <div className="bg-black/80 text-white max-w-lg w-full mx-4 p-6 rounded-3xl border border-white/10 backdrop-blur">
-        <h1 className="text-sm font-semibold mb-1 text-center">Vale Produção apresenta</h1>
+        <h1 className="text-xl font-semibold mb-1 text-center">Vale Produção apresenta</h1>
         <h2 className="text-3xl font-bold text-center mb-4">Jogo do Juiz</h2>
         <p className="text-xs text-center mb-4 opacity-80">
-          Crie seu usuário ou escolha um perfil já existente. Exporte/importe o save quando quiser.
+          Crie seu usuário, escolha um avatar e controle sua carreira jurídica.
         </p>
 
         <div className="space-y-3">
@@ -337,7 +352,10 @@ function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEn
               placeholder="Ex.: DraMaria, EstudanteJoão..."
             />
           </div>
-          <div className="flex gap-2">
+
+          <AvatarPicker avatar={avatar} setAvatar={setAvatar} />
+
+          <div className="flex gap-2 mt-4">
             <button
               onClick={handleEnter}
               className="flex-1 px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold"
@@ -351,6 +369,7 @@ function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEn
               Exportar save
             </button>
           </div>
+
           <div className="mt-2 text-xs">
             <div className="mb-1">Importar save:</div>
             <input
@@ -370,12 +389,15 @@ function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEn
 
         {Object.keys(profiles).length>0 && (
           <div className="mt-4">
-            <div className="text-xs mb-1 opacity-70">Perfis encontrados:</div>
+            <div className="text-xs mb-1 opacity-70">Perfis existentes:</div>
             <div className="flex flex-wrap gap-2">
               {Object.keys(profiles).map(p=>(
                 <button
                   key={p}
-                  onClick={()=>setUser(p)}
+                  onClick={()=>{
+                    setUser(p);
+                    if(profiles[p].avatar) setAvatar(profiles[p].avatar);
+                  }}
                   className="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 text-xs"
                 >
                   {p}
@@ -389,52 +411,21 @@ function LoginScreen({profiles,setProfiles,currentProfile,setCurrentProfile,onEn
   );
 }
 
-/* ---------- Escolha de avatar do jogador ---------- */
-function AvatarSelect({profile,onChoose}){
-  const avatars=[1,2,3,4,5,6].map(i=>`avatar${i}.jpg`);
-  const [sel,setSel]=useState(profile.avatar||avatars[0]);
-  return (
-    <div className="min-h-screen bg-black flex items-center justify-center text-white">
-      <div className="bg-white/5 border border-white/10 rounded-3xl max-w-xl w-full mx-4 p-6">
-        <h2 className="text-2xl font-bold mb-4 text-center">Escolha seu avatar</h2>
-        <p className="text-xs opacity-80 mb-4 text-center">
-          Este será o rosto do seu juiz nas telas de escritório, julgamento e relatórios.
-        </p>
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {avatars.map(a=>(
-            <button
-              key={a}
-              onClick={()=>setSel(a)}
-              className={"rounded-2xl overflow-hidden border-2 "+(sel===a?"border-emerald-400":"border-transparent")}
-            >
-              <img src={a} alt={a} className="w-full h-24 object-cover"/>
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={()=>onChoose(sel)}
-          className="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold"
-        >
-          Confirmar avatar
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Escolha de Tribunal ---------- */
 function CourtSelectScreen({onSelectCourt,profile}){
-  const courts=[
-    {id:"criminal",icon:"⚖️",nome:"Criminal",desc:"Crimes contra a pessoa e o patrimônio. Possui júri popular."},
-    {id:"familia",icon:"👨‍👩‍👧",nome:"Família",desc:"Guarda, pensão, divórcio e medidas protetivas. Sem júri."},
-    {id:"trabalhista",icon:"💼",nome:"Trabalhista",desc:"Vínculo, jornada, verbas e danos morais. Sem júri."}
+  const courts = [
+    {id:"criminal",icon:"⚖️",nome:"Criminal",desc:"Crimes contra a pessoa e o patrimônio."},
+    {id:"familia",icon:"👨‍👩‍👧",nome:"Família",desc:"Guarda, pensão, divórcio e medidas protetivas."},
+    {id:"trabalhista",icon:"💼",nome:"Trabalhista",desc:"Vínculo, jornada, verbas e danos morais."}
   ];
   return (
     <div className="min-h-screen bg-black flex items-center justify-center text-white">
       <div className="max-w-4xl w-full mx-4 p-6">
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          Bem-vindo(a), {profile.nome}. Escolha seu tribunal inicial.
-        </h2>
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-3xl font-bold">Escolha o Tribunal</h2>
+          {profile.avatar && (
+            <img src={profile.avatar} className="w-10 h-10 rounded-full border border-white/30 object-cover" alt="avatar"/>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {courts.map(c=>(
             <button
@@ -453,11 +444,11 @@ function CourtSelectScreen({onSelectCourt,profile}){
   );
 }
 
-/* ---------- Escolha de Comarca ---------- */
 function LocationSelect({profile,onSelectLocation}){
   const [estado,setEstado]=useState(profile.estado||"SP");
   const cidades=ESTADOS[estado]||[];
   const [cidade,setCidade]=useState(profile.cidade||cidades[0]||"");
+
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="bg-white/10 p-6 rounded-3xl max-w-md w-full mx-4 border border-white/10">
@@ -502,201 +493,58 @@ function LocationSelect({profile,onSelectLocation}){
   );
 }
 
-/* ---------- Viewer de Provas ---------- */
 function ProvaViewer({prova,onClose}){
   if(!prova) return null;
-  let img=null;
-  if(prova.tipo==="bo") img="bo.jpg";
-  else if(prova.tipo==="laudo") img="laudo.jpg";
-  else if(prova.tipo==="pericia") img="pericia.jpg";
+  let bg="bo.jpg";
+  if(prova.tipo==="laudo") bg="laudo.jpg";
+  if(prova.tipo==="testemunha") bg="testemunha.jpg";
   return (
-    <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-40">
-      <div className="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full mx-4 p-6">
-        <h3 className="text-lg font-semibold mb-2">{prova.titulo}</h3>
-        {img && (
-          <div className="mb-3 rounded-2xl overflow-hidden border border-white/10">
-            <img src={img} alt={prova.titulo} className="w-full h-40 object-cover"/>
-          </div>
-        )}
-        <p className="text-sm whitespace-pre-wrap opacity-90 mb-4">{prova.conteudo}</p>
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-sm font-semibold"
-        >
-          Fechar
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Relatório semestral ---------- */
-function RelatorioSemestral({profile,onClose}){
-  const s=profile.stats||{};
-  return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-40 text-white">
-      <div className="bg-slate-900 border border-white/15 rounded-3xl max-w-xl w-full mx-4 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          {profile.avatar && (
-            <img src={profile.avatar} alt="avatar" className="w-12 h-12 rounded-full object-cover border border-white/20"/>
-          )}
-          <div>
-            <h3 className="text-lg font-semibold">Relatório semestral</h3>
-            <p className="text-xs opacity-80">{profile.nome} — {profile.cidade}/{profile.estado}</p>
-          </div>
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-40">
+      <div
+        className="bg-slate-900 border border-white/15 rounded-3xl max-w-lg w-full mx-4 p-6 relative overflow-hidden"
+      >
+        <div
+          className="absolute inset-0 opacity-20 bg-cover bg-center"
+          style={{backgroundImage:`url('${bg}')`}}
+        ></div>
+        <div className="relative z-10">
+          <h3 className="text-lg font-semibold mb-2">{prova.id} — {prova.titulo}</h3>
+          <p className="text-sm whitespace-pre-wrap opacity-90 mb-4">{prova.conteudo}</p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-sm font-semibold"
+          >
+            Fechar
+          </button>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-xs mb-4">
-          <div className="bg-white/5 rounded-2xl p-3">
-            <div className="text-[10px] opacity-70 mb-1">Casos julgados</div>
-            <div className="text-xl font-bold">{s.julgados||0}</div>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-3">
-            <div className="text-[10px] opacity-70 mb-1">Índice de acertos</div>
-            <div className="text-xl font-bold">
-              {s.julgados?Math.round((s.acertos||0)*100/(s.julgados||1)):0}%
-            </div>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-3">
-            <div className="text-[10px] opacity-70 mb-1">Prestígio</div>
-            <div className="text-xl font-bold">{s.prestigio||0}</div>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-3">
-            <div className="text-[10px] opacity-70 mb-1">Áreas trabalhadas</div>
-            <div className="text-xs">
-              Criminal: {s.criminal||0}<br/>
-              Família: {s.familia||0}<br/>
-              Trab.: {s.trabalhista||0}<br/>
-              STJ: {s.stj||0}
-            </div>
-          </div>
-        </div>
-        <p className="text-xs mb-4 opacity-80">
-          Parecer geral: {s.julgados>0
-            ? s.acertos/s.julgados>=0.7
-              ? "Desempenho consistente, com boa taxa de acertos e domínio crescente das provas."
-              : "É recomendável revisar fundamentos jurídicos e análise de prova para elevar a taxa de acerto."
-            : "Ainda não há casos suficientes para avaliação. Julgue alguns processos para gerar dados."}
-        </p>
-        <button
-          onClick={onClose}
-          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold w-full"
-        >
-          Fechar relatório
-        </button>
       </div>
     </div>
   );
 }
 
-/* ---------- Exame STJ ---------- */
-function STJExam({onFinish}){
-  const banco=[];
-  for(let i=1;i<=50;i++){
-    banco.push({
-      id:i,
-      enunciado:`Questão ${i}: Em um recurso especial ao STJ, qual é o foco principal da análise em matéria de lei federal?`,
-      opcoes:[
-        "Reexame amplo de fatos e provas produzidos na origem.",
-        "Interpretação e aplicação da legislação federal infraconstitucional.",
-        "Controle de constitucionalidade concentrado das leis estaduais.",
-        "Fixação do valor da causa para fins de custas."
-      ],
-      correta:1
-    });
-  }
-  const selecionadas=[];
-  const used=new Set();
-  while(selecionadas.length<10){
-    const idx=Math.floor(Math.random()*banco.length);
-    if(!used.has(idx)){used.add(idx);selecionadas.push(banco[idx]);}
-  }
-  const [respostas,setRespostas]=useState({});
-  const [finalizado,setFinalizado]=useState(false);
-  const [nota,setNota]=useState(0);
-
-  function corrigir(){
-    let ac=0;
-    selecionadas.forEach(q=>{
-      if(respostas[q.id]===q.correta) ac++;
-    });
-    const perc=Math.round(ac*100/selecionadas.length);
-    setNota(perc);
-    setFinalizado(true);
-    const aprovado=perc>=70;
-    onFinish(aprovado,perc);
-  }
-
-  return (
-    <div
-      className="min-h-screen flex items-center justify-center text-white"
-      style={{backgroundImage:"url('stj.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
-    >
-      <div className="bg-black/80 border border-white/10 rounded-3xl max-w-3xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto scroll-thin">
-        <h2 className="text-2xl font-bold mb-2 text-center">Prova simulada para ingresso no STJ</h2>
-        <p className="text-xs opacity-80 mb-4 text-center">
-          Responda 10 questões objetivas. É necessário atingir pelo menos 70% de acertos.
-        </p>
-        {selecionadas.map(q=>(
-          <div key={q.id} className="mb-4">
-            <div className="text-sm font-semibold mb-1">{q.enunciado}</div>
-            <div className="space-y-1 text-xs">
-              {q.opcoes.map((op,i)=>(
-                <label key={i} className="flex items-start gap-2 cursor-pointer">
-                  <input
-                    type="radio"
-                    name={`q${q.id}`}
-                    checked={respostas[q.id]===i}
-                    onChange={()=>setRespostas(r=>({...r,[q.id]:i}))}
-                  />
-                  <span>{op}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
-        <button
-          onClick={corrigir}
-          className="w-full px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold mt-2"
-        >
-          Corrigir prova
-        </button>
-        {finalizado && (
-          <p className="mt-3 text-xs text-center">
-            Nota: {nota}%. {nota>=70 ? "Parabéns! Você está apto a atuar no STJ." : "Ainda não atingiu a nota mínima. Continue estudando e tente novamente."}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/* ---------- Escritório ---------- */
 function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
-  const fila=cases.filter(c=>c.status==="na_fila" && (profile.court==="stj"?c.tipo==="stj":c.tipo===profile.court));
-  const s=profile.stats||{};
+  const fila = cases.filter(c=>c.status==="na_fila" && (!profile.court || c.tipo===profile.court));
+
   return (
-    <div
-      className="min-h-screen relative text-white"
-      style={{backgroundImage:"url('escritorio.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
-    >
+    <div className="min-h-screen relative text-white" style={{backgroundImage:"url('escritorio.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}>
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
       <div className="relative z-10 max-w-6xl mx-auto p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             {profile.avatar && (
-              <img src={profile.avatar} alt="avatar" className="w-12 h-12 rounded-full object-cover border border-white/20"/>
+              <img src={profile.avatar} className="w-12 h-12 rounded-full border border-white/40 object-cover" alt="avatar"/>
             )}
             <div>
               <h1 className="text-2xl font-bold">Escritório do Juiz</h1>
               <p className="text-xs opacity-80">
-                {profile.nome} — {profile.cidade}/{profile.estado} • {profile.court==="stj"?"Ministro do STJ":(profile.court||"sem tribunal")}
+                {profile.nome} — {profile.cidade}/{profile.estado} • {profile.court ? profile.court.toUpperCase() : "sem tribunal"}
               </p>
             </div>
           </div>
           <div className="text-xs text-right opacity-80">
-            Julgados: {s.julgados||0}<br/>
-            Acertos: {s.acertos||0}<br/>
-            Prestígio: {s.prestigio||0}
+            Julgados: {profile.stats?.julgados||0}<br/>
+            Acertos: {profile.stats?.acertos||0}<br/>
+            Prestígio: {profile.stats?.prestigio||0}
           </div>
         </div>
 
@@ -725,7 +573,7 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
           <div className="bg-white/10 border border-white/10 rounded-3xl p-5 flex flex-col">
             <h2 className="text-lg font-semibold mb-3">Painel da carreira</h2>
             <p className="text-xs opacity-80 mb-3">
-              Acompanhe sua evolução, acesse relatórios e, quando estiver pronto, candidate-se ao STJ.
+              Acompanhe sua evolução, solicite relatórios e, quando estiver pronto, candidate-se ao STJ.
             </p>
             <button
               onClick={onRelatorio}
@@ -740,7 +588,7 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
               Candidatar-se ao STJ
             </button>
             <div className="mt-4 text-[10px] opacity-70">
-              Simulação educacional inspirada em rotinas reais, sem valor jurídico. Para uso em escolas, cursos e treinamentos.
+              Simulação educacional inspirada em rotinas reais, sem valor jurídico.
             </div>
           </div>
         </div>
@@ -749,7 +597,6 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
   );
 }
 
-/* ---------- Julgamento ---------- */
 function Julgamento({caso,onVoltar,onFinish,profile,sons}){
   const [falas,setFalas]=useState([]);
   const [pergunta,setPergunta]=useState("");
@@ -765,18 +612,18 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
     setJurados(inicial);
     setFalas([]);
     setPergunta("");
-    setDeliberou=false;
+    setDeliberou(false);
   },[caso.id]);
 
   async function ouvir(ag){
-    const fala = await iaFala(ag,caso,"");
+    const fala=await iaFala(ag,caso,"");
     setFalas(f=>[...f,{autor:ag,texto:fala}]);
     sons.murmur.play();
   }
 
   async function perguntarIA(){
     if(!pergunta.trim()) return;
-    const fala = await iaFala("testemunha",caso,pergunta);
+    const fala=await iaFala("testemunha",caso,pergunta);
     setFalas(f=>[
       ...f,
       {autor:"juiz",texto:"Pergunta do Juiz: "+pergunta},
@@ -787,7 +634,7 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
   }
 
   function decidir(veredito){
-    const acertou=veredito===caso.gabarito.culpado;
+    const acertou = veredito===caso.gabarito.culpado;
     onFinish(caso,veredito,acertou);
   }
 
@@ -797,8 +644,8 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
       return;
     }
     if(deliberou) return;
-    const novo=jurados.map(j=>{
-      const tendencia=caso.gabarito.culpado?0.7:0.3;
+    const novo = jurados.map(j=>{
+      const tendencia = caso.gabarito.culpado?0.7:0.3;
       const r=Math.random();
       const voto = r<tendencia;
       return {...j,voto};
@@ -808,12 +655,11 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
   }
 
   return (
-    <div
-      className="min-h-screen relative text-white"
+    <div className="min-h-screen relative text-white"
       style={{backgroundImage:"url('saladejulgamento.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
     >
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
-      <ProvaViewer prova={provaSel} onClose={()=>setProvaSel(null)}/>
+      <ProvaViewer prova={provaSel} onClose={()=>setProvaSel(null)} />
       <div className="relative z-10 max-w-5xl mx-auto p-6">
         <div className="flex items-center justify-between mb-3">
           <button
@@ -870,7 +716,7 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
                   {f.autor==="testemunha" && (
                     <img src="testemunha.jpg" alt="testemunha" className="w-8 h-8 rounded-full object-cover mt-1"/>
                   )}
-                  {f.autor==="juiz" && (
+                  {f.autor==="juiz" && profile.avatar && (
                     <img src={profile.avatar} alt="juiz" className="w-8 h-8 rounded-full object-cover mt-1"/>
                   )}
                   <div className="text-xs bg-black/40 rounded-2xl px-3 py-2 flex-1">
@@ -883,7 +729,7 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
             <div className="flex gap-2 mb-3">
               <input
                 className="flex-1 px-3 py-2 rounded-2xl bg-white/10 text-xs outline-none"
-                placeholder="Pergunta do Juiz (ex.: Testemunha, explique a contradição do depoimento)..."
+                placeholder="Pergunta do Juiz..."
                 value={pergunta}
                 onChange={e=>setPergunta(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter") perguntarIA();}}
@@ -933,7 +779,7 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
               <h3 className="text-sm font-semibold mb-2">Júri Popular (12)</h3>
               {caso.tipo!=="criminal" && (
                 <p className="text-[11px] opacity-80 mb-2">
-                  Para este tipo de ação não há júri popular. Clique em <b>Iniciar Deliberação</b> para ver uma mensagem educativa.
+                  Para este tipo de ação não há júri popular. Clique em <b>Iniciar Deliberação</b> para visualizar uma mensagem educativa.
                 </p>
               )}
               {caso.tipo==="criminal" && (
@@ -965,197 +811,166 @@ function Julgamento({caso,onVoltar,onFinish,profile,sons}){
   );
 }
 
-/* ===================== APP PRINCIPAL ===================== */
+function STJInfo({profile,onVoltar}){
+  const minPrestigio=40;
+  const minJulgados=20;
+  const p=profile.stats||{prestigio:0,julgados:0};
+  const ok=p.prestigio>=minPrestigio && p.julgados>=minJulgados;
+  return (
+    <div className="min-h-screen relative text-white"
+      style={{backgroundImage:"url('stj.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
+    >
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
+      <div className="relative z-10 max-w-xl mx-auto p-6">
+        <button
+          onClick={onVoltar}
+          className="mb-4 px-3 py-1 rounded-xl bg-white/10 hover:bg-white/20 text-xs"
+        >
+          Voltar
+        </button>
+        <h1 className="text-2xl font-bold mb-3">Candidatura ao STJ</h1>
+        {!ok && (
+          <>
+            <p className="text-sm mb-3">
+              Para se candidatar ao STJ neste simulador, é preciso construir experiência mínima:
+            </p>
+            <ul className="text-sm list-disc pl-5 space-y-1 mb-4">
+              <li>Prestígio mínimo: <b>{minPrestigio}</b> (você possui {p.prestigio}).</li>
+              <li>Casos julgados: <b>{minJulgados}</b> ou mais (você possui {p.julgados}).</li>
+            </ul>
+            <p className="text-xs opacity-80">
+              Continue julgando com responsabilidade. A cada decisão coerente com o gabarito pedagógico,
+              seu prestígio aumenta.
+            </p>
+          </>
+        )}
+        {ok && (
+          <>
+            <p className="text-sm mb-3">
+              Parabéns! Você atingiu os requisitos mínimos de experiência. Em uma próxima versão,
+              será liberado o modo especial com casos simulados do STJ e exame objetivo.
+            </p>
+            <p className="text-xs opacity-80">
+              Por enquanto, esta tela serve apenas como objetivo de carreira dentro do curso.
+            </p>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ========= APP PRINCIPAL ========= */
 
 function App(){
-  const [view,setView]=useState("splash");
+  const [stage,setStage]=useState("splash");
   const [profiles,setProfiles]=useState({});
-  const [currentProfile,setCurrentProfile]=useState(null);
+  const [currentProfileName,setCurrentProfileName]=useState(null);
   const [cases,setCases]=useState(seedCases);
-  const [currentCase,setCurrentCase]=useState(null);
-  const [stjMode,setStjMode]=useState(false);
+  const [currentCaseId,setCurrentCaseId]=useState(null);
 
-  const gavelSound=useSound(SOUND_URLS.gavel,true);
-  const murmurSound=useSound(SOUND_URLS.murmur,true);
-  const sons={gavel:gavelSound,murmur:murmurSound};
+  const sons = {
+    gavel: useSound(SOUND_URLS.gavel,true,0.7),
+    murmur: useSound(SOUND_URLS.murmur,true,0.4)
+  };
 
   useEffect(()=>{
-    try{
-      const saved=JSON.parse(localStorage.getItem("juiz_profiles_v6")||"{}");
-      const curr=localStorage.getItem("juiz_current_v6")||null;
-      setProfiles(saved);
-      setCurrentProfile(curr);
-    }catch(e){}
+    const saved = localStorage.getItem("juiz_profiles");
+    if(saved){
+      try{
+        setProfiles(JSON.parse(saved));
+      }catch(_){}
+    }
   },[]);
 
-  useEffect(()=>{
-    if(currentProfile){
-      localStorage.setItem("juiz_current_v6",currentProfile);
-    }
-  },[currentProfile]);
+  const currentProfile = currentProfileName ? profiles[currentProfileName] : null;
 
   function updateProfile(updater){
     setProfiles(prev=>{
-      const p={...prev};
-      const curr=p[currentProfile];
-      if(!curr) return prev;
-      const novo=updater(curr);
-      p[currentProfile]=novo;
-      localStorage.setItem("juiz_profiles_v6",JSON.stringify(p));
-      return p;
+      const atual = prev[currentProfileName];
+      if(!atual) return prev;
+      const atualizado = updater(atual);
+      const novo = {...prev,[currentProfileName]:atualizado};
+      localStorage.setItem("juiz_profiles",JSON.stringify(novo));
+      return novo;
     });
   }
 
-  const profile=currentProfile?profiles[currentProfile]:null;
+  function handleSelectCourt(court){
+    updateProfile(p=>({...p,court}));
+    setStage("location");
+  }
+
+  function handleLocation(estado,cidade){
+    updateProfile(p=>({...p,estado,cidade}));
+    setStage("escritorio");
+  }
+
+  function handleSelectCase(id){
+    setCurrentCaseId(id);
+    setStage("julgamento");
+  }
 
   function handleFinishCase(caso,veredito,acertou){
     setCases(prev=>prev.map(c=>c.id===caso.id?{...c,status:veredito?"condenado":"absolvido"}:c));
     updateProfile(p=>{
-      const stats={...(p.stats||{})};
-      stats.julgados=(stats.julgados||0)+1;
-      if(acertou) stats.acertos=(stats.acertos||0)+1;
-      const delta=acertou?3:-1;
-      stats.prestigio=Math.max(0,(stats.prestigio||0)+delta);
-      stats[caso.tipo]=(stats[caso.tipo]||0)+1;
-      const hist=[...(p.historico||[])];
-      hist.push({
-        id:caso.id,
-        titulo:caso.titulo,
-        tipo:caso.tipo,
-        veredito,
-        acertou,
-        data:new Date().toISOString()
-      });
-      return {...p,stats,historico:hist};
+      const stats=p.stats||{julgados:0,acertos:0,prestigio:0};
+      const julgados=stats.julgados+1;
+      const acertos=stats.acertos+(acertou?1:0);
+      const prestigio=Math.max(0,Math.min(100,stats.prestigio+(acertou?3:-1)));
+      return {...p,stats:{julgados,acertos,prestigio}};
     });
-    alert(acertou?"Decisão coerente com o gabarito da simulação.":"Nesta simulação, o gabarito indicava solução diversa. Veja o relatório para estudar.");
-    setView("escritorio");
+    alert(acertou
+      ? "Decisão alinhada ao gabarito pedagógico da simulação."
+      : "Nesta simulação, o gabarito indicava solução diferente. Revise o dossiê e as falas.");
+    setStage("escritorio");
   }
 
-  function tentarSTJ(){
-    if(!profile) return;
-    const s=profile.stats||{};
-    if(profile.court==="stj"){
-      alert("Você já está atuando no STJ.");
-      return;
-    }
-    if(s.julgados<10 || s.prestigio<40 || (s.julgados? (s.acertos||0)*100/s.julgados : 0)<60){
-      alert("Para se candidatar ao STJ é necessário:\n- Pelo menos 10 casos julgados;\n- Prestígio mínimo de 40;\n- Pelo menos 60% de acertos.\nContinue jogando e estudando!");
-      return;
-    }
-    setStjMode(true);
-    setView("stjExam");
-  }
-
-  function finalizarProvaSTJ(aprovado,nota){
-    setStjMode(false);
-    if(!aprovado){
-      alert("Nota na prova STJ: "+nota+"%. Ainda não foi desta vez. Continue estudando!");
-      setView("escritorio");
-      return;
-    }
-    updateProfile(p=>({...p,court:"stj"}));
-    alert("Parabéns! Você foi aprovado na prova simulada e agora atua no STJ.");
-    setView("escritorio");
-  }
-
-  if(view==="splash") return <SplashScreen onStart={()=>setView("tutorial")}/>;
-  if(view==="tutorial") return <TutorialSalvamento onContinuar={()=>setView("login")}/>;
-  if(view==="login") return (
-    <LoginScreen
-      profiles={profiles}
-      setProfiles={setProfiles}
-      currentProfile={currentProfile}
-      setCurrentProfile={setCurrentProfile}
-      onEnter={()=>{
-        const p=profiles[currentProfile]||profiles[Object.keys(profiles)[0]];
-        if(p && p.avatar){setView("courtSelect");}
-        else setView("avatar");
-      }}
-    />
-  );
-  if(!profile) return null;
-
-  if(view==="avatar") return (
-    <AvatarSelect
-      profile={profile}
-      onChoose={avatar=>{
-        updateProfile(p=>({...p,avatar}));
-        setView("courtSelect");
-      }}
-    />
-  );
-
-  if(view==="courtSelect") return (
-    <CourtSelectScreen
-      profile={profile}
-      onSelectCourt={court=>{
-        updateProfile(p=>({...p,court}));
-        setView("location");
-      }}
-    />
-  );
-
-  if(view==="location") return (
-    <LocationSelect
-      profile={profile}
-      onSelectLocation={(estado,cidade)=>{
-        updateProfile(p=>({...p,estado,cidade}));
-        setView("escritorio");
-      }}
-    />
-  );
-
-  if(view==="escritorio") return (
-    <Escritorio
-      profile={profile}
-      cases={cases}
-      onSelectCase={id=>{
-        const c=cases.find(x=>x.id===id);
-        if(c){setCurrentCase(c);setView("julgamento");}
-      }}
-      onSTJ={tentarSTJ}
-      onRelatorio={()=>setView("relatorio")}
-      sons={sons}
-    />
-  );
-
-  if(view==="relatorio") return (
-    <>
-      <Escritorio
-        profile={profile}
-        cases={cases}
-        onSelectCase={id=>{
-          const c=cases.find(x=>x.id===id);
-          if(c){setCurrentCase(c);setView("julgamento");}
-        }}
-        onSTJ={tentarSTJ}
-        onRelatorio={()=>{}}
-        sons={sons}
+  if(stage==="splash") return <SplashScreen onStart={()=>setStage("tutorial")} />;
+  if(stage==="tutorial") return <TutorialSalvamento onContinuar={()=>setStage("login")} />;
+  if(stage==="login")
+    return (
+      <LoginScreen
+        profiles={profiles}
+        setProfiles={setProfiles}
+        setCurrentProfile={setCurrentProfileName}
+        onEnter={()=>setStage("court")}
       />
-      <RelatorioSemestral profile={profile} onClose={()=>setView("escritorio")}/>
-    </>
-  );
+    );
+  if(!currentProfile) return null;
 
-  if(view==="julgamento" && currentCase) return (
-    <Julgamento
-      caso={currentCase}
-      profile={profile}
-      sons={sons}
-      onVoltar={()=>setView("escritorio")}
-      onFinish={handleFinishCase}
-    />
-  );
-
-  if(view==="stjExam" && stjMode) return <STJExam onFinish={finalizarProvaSTJ}/>;
+  if(stage==="court") return <CourtSelectScreen onSelectCourt={handleSelectCourt} profile={currentProfile} />;
+  if(stage==="location") return <LocationSelect profile={currentProfile} onSelectLocation={handleLocation} />;
+  if(stage==="escritorio")
+    return (
+      <Escritorio
+        profile={currentProfile}
+        cases={cases}
+        onSelectCase={handleSelectCase}
+        sons={sons}
+        onSTJ={()=>setStage("stj")}
+        onRelatorio={()=>alert("Relatório semestral: número de julgados, taxa de acerto e comentários pedagógicos podem ser exportados em PDF em versão futura.")}
+      />
+    );
+  if(stage==="julgamento"){
+    const caso = cases.find(c=>c.id===currentCaseId);
+    if(!caso) return null;
+    return (
+      <Julgamento
+        caso={caso}
+        profile={currentProfile}
+        sons={sons}
+        onVoltar={()=>setStage("escritorio")}
+        onFinish={handleFinishCase}
+      />
+    );
+  }
+  if(stage==="stj") return <STJInfo profile={currentProfile} onVoltar={()=>setStage("escritorio")} />;
 
   return null;
 }
 
-/* ===================== RENDER ===================== */
-
-const root=ReactDOM.createRoot(document.getElementById("root"));
-root.render(<App/>);
-</script>
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
 </body>
 </html>
