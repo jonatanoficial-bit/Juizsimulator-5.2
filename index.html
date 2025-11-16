@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Jogo do Juiz — Vale Produção</title>
+  <title>Jogo do Juiz 7.0 — Vale Produção</title>
   <!-- React + Babel -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
@@ -80,9 +80,9 @@ function seedCases(){
   const casos=[];
   let id=1;
 
-  function addLote(tipo, modelos){
+  function addLote(tipo, modelos, repeticoes){
     modelos.forEach(m=>{
-      for(let i=0;i<5;i++){
+      for(let i=0;i<repeticoes;i++){
         casos.push({
           id: tipo+"-"+(id++),
           tipo,
@@ -115,7 +115,8 @@ function seedCases(){
     });
   }
 
-  addLote("criminal",[
+  // Modelos CRIMINAIS
+  const modelosCriminais = [
     {
       titulo:"Homicídio simples em briga de bar",
       resumo:"Discussão em estabelecimento que evolui para agressões físicas graves, culminando em morte de um dos envolvidos.",
@@ -140,9 +141,10 @@ function seedCases(){
       laudo:"O laudo de exame de corpo de delito aponta múltiplos hematomas em antebraços, ombros e região cervical, compatíveis com agarrões fortes, além de escoriações em perna direita. As lesões são classificadas como de natureza leve, porém com nítido padrão de repetição em diferentes estágios de cicatrização, sugerindo episódios anteriores.",
       testemunha:"Eu moro no apartamento ao lado e já ouvi brigas deles outras vezes, mas naquela noite foi diferente. A discussão começou com voz alta e xingamentos, depois ouvi barulho de porta batendo e móveis arrastando. Pelas frestas, vi ele segurando os braços dela com força, enquanto ela pedia para ser solta. Não vi ela bater nele, só tentando afastá-lo e se proteger."
     }
-  ]);
+  ];
 
-  addLote("familia",[
+  // Modelos FAMÍLIA
+  const modelosFamilia = [
     {
       titulo:"Revisão de alimentos",
       resumo:"Genitor requer redução de pensão alimentícia em razão de perda de emprego e novo filho em outro relacionamento.",
@@ -167,9 +169,10 @@ function seedCases(){
       laudo:"O relatório da equipe técnica aponta que a criança demonstra ansiedade em dias de visita, mas mantém vínculo afetivo com o genitor não guardião. Recomenda-se manutenção do contato, porém em ambiente supervisionado e preparado para visitas assistidas, evitando novas situações de conflito direto entre os adultos.",
       testemunha:"Eu trabalho na portaria do condomínio e presenciei algumas das entregas da criança. Em mais de uma ocasião, os dois começaram a discutir alto, um acusando o outro de chegar atrasado ou de não cumprir combinados. A menina ficava no meio, visivelmente assustada, segurando a mochila com força. Nunca vi o pai agredir a criança, mas as brigas entre eles eram frequentes."
     }
-  ]);
+  ];
 
-  addLote("trabalhista",[
+  // Modelos TRABALHISTA
+  const modelosTrabalhista = [
     {
       titulo:"Horas extras habituais",
       resumo:"Empregado alega jornada diária superior à contratual sem o devido pagamento de horas extras e reflexos.",
@@ -194,7 +197,12 @@ function seedCases(){
       laudo:"O laudo psicológico ocupacional indica que o reclamante apresenta sintomas de ansiedade, insônia e queda de autoestima, com nexo temporal entre o início do quadro e o aumento de episódios de humilhação no ambiente de trabalho.",
       testemunha:"Eu fazia parte do mesmo grupo de mensagens e cansei de ver o supervisor chamando o reclamante de 'inútil' e 'peso morto' na frente de todo mundo. Nas reuniões presenciais, ele levantava gráficos na tela e apontava o nome do reclamante, dizendo que era o pior do time. Isso acontecia quase toda semana."
     }
-  ]);
+  ];
+
+  // Gera cerca de 100 casos por ramo (3 modelos x ~12 repetições = 36, aqui uso 10 p/ não ficar pesado demais)
+  addLote("criminal",modelosCriminais,10);
+  addLote("familia",modelosFamilia,10);
+  addLote("trabalhista",modelosTrabalhista,10);
 
   return casos;
 }
@@ -203,12 +211,22 @@ function seedCases(){
 async function iaFala(agente, caso, pergunta=""){
   const resumo = caso.resumo;
 
+  // Análise simples da pergunta para parecer mais "inteligente"
+  let focoPergunta = "";
+  const p = pergunta.toLowerCase();
+  if(p.includes("hora") || p.includes("horário")) focoPergunta = "Quanto ao horário dos fatos, ";
+  else if(p.includes("local") || p.includes("onde")) focoPergunta = "Sobre o local exato do ocorrido, ";
+  else if(p.includes("arma") || p.includes("faca") || p.includes("revólver")) focoPergunta = "Em relação à arma utilizada, ";
+  else if(p.includes("lesão") || p.includes("ferimento") || p.includes("hematoma")) focoPergunta = "Com relação às lesões observadas, ";
+  else if(p.includes("testemunha") || p.includes("viu") || p.includes("presenciou")) focoPergunta = "Acerca do que foi percebido diretamente, ";
+  else if(p.includes("motivo") || p.includes("intenção") || p.includes("discussão")) focoPergunta = "No tocante ao motivo e à dinâmica da discussão, ";
+
   // Testemunha: fala em primeira pessoa com base na prova
   if(agente==="testemunha"){
     const provaTest = caso.provas.find(p=>p.tipo==="testemunha");
     const baseTexto = provaTest ? provaTest.conteudo : resumo;
     const prefixoPerg = pergunta
-      ? "Respondendo à pergunta do Juiz, eu posso dizer o seguinte: "
+      ? focoPergunta + "respondendo à pergunta do Juiz, posso dizer: "
       : "Vou relatar com detalhes o que eu vi naquele dia: ";
     const texto = "TESTEMUNHA — " + prefixoPerg + baseTexto;
     await new Promise(r=>setTimeout(r,300));
@@ -221,7 +239,7 @@ async function iaFala(agente, caso, pergunta=""){
     "TESTEMUNHA — ";
 
   const foco = pergunta
-    ? 'Respondendo à pergunta do Juiz: "'+pergunta+'". '
+    ? focoPergunta + 'respondendo à pergunta do Juiz: "'+pergunta+'". '
     : "Expondo os principais pontos do processo. ";
 
   const base =
@@ -247,8 +265,8 @@ function SplashScreen({onStart}){
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/70 to-transparent" />
         <div className="relative z-10 h-full flex flex-col items-center justify-end pb-10 px-6">
-          <h1 className="text-3xl font-bold mb-1 drop-shadow-lg text-center">Jogo do Juiz</h1>
-          <p className="text-sm opacity-90 mb-4 text-center">Vale Produção • Simulador Educacional</p>
+          <h1 className="text-3xl font-bold mb-1 drop-shadow-lg text-center">Jogo do Juiz 7.0</h1>
+          <p className="text-sm opacity-90 mb-4 text-center">Vale Produção • Simulador Jurídico</p>
           <button
             onClick={onStart}
             className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-sm font-semibold shadow-xl"
@@ -562,8 +580,8 @@ function ProvaViewer({prova,onClose}){
   );
 }
 
-// -------- Relatório Trimestral --------
-function RelatorioTrimestral({profile,cases,onVoltar}){
+// -------- Relatório Semestral --------
+function RelatorioSemestral({profile,cases,onVoltar}){
   const stats = profile.stats || { julgados: 0, acertos: 0, prestigio: 0 };
 
   const julgadosTribunal = cases.filter(c =>
@@ -618,7 +636,7 @@ function RelatorioTrimestral({profile,cases,onVoltar}){
 
           <div className="flex-1 text-sm">
             <h2 className="text-lg font-semibold mb-2">
-              Relatório estatístico trimestral
+              Relatório estatístico semestral
             </h2>
             <p className="text-[11px] opacity-80 mb-3">
               Dados resumidos do desempenho do juiz neste período simulado.
@@ -671,7 +689,7 @@ function RelatorioTrimestral({profile,cases,onVoltar}){
 }
 
 // -------- Escritório --------
-function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
+function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons,mode,setMode}){
   const fila = cases.filter(c=>c.status==="na_fila" && (!profile.court || c.tipo===profile.court));
 
   return (
@@ -708,6 +726,37 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
           </div>
         </div>
 
+        <div className="mb-4 flex items-center gap-2 text-xs">
+          <span className="opacity-80 mr-1">Modo:</span>
+          <button
+            onClick={()=>setMode("carreira")}
+            className={
+              "px-3 py-1 rounded-full border " +
+              (mode==="carreira"
+                ? "bg-emerald-500 border-emerald-300"
+                : "bg-white/10 border-white/20")
+            }
+          >
+            Carreira
+          </button>
+          <button
+            onClick={()=>setMode("estudo")}
+            className={
+              "px-3 py-1 rounded-full border " +
+              (mode==="estudo"
+                ? "bg-sky-500 border-sky-300"
+                : "bg-white/10 border-white/20")
+            }
+          >
+            Estudo
+          </button>
+          <span className="opacity-70 ml-2">
+            {mode==="carreira"
+              ? "Decisões contam para o prestígio."
+              : "Decisões não alteram estatísticas oficiais."}
+          </span>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white/10 border border-white/10 rounded-3xl p-5">
             <h2 className="text-lg font-semibold mb-3">Fila de processos</h2>
@@ -739,9 +788,9 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
               onClick={onRelatorio}
               className="mb-2 w-full px-4 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-sm font-semibold"
             >
-              Ver relatório trimestral
+              Ver relatório semestral
             </button>
-            {(profile.stats?.prestigio||0) >= 40 && (
+            {(profile.stats?.prestigio||0) >= 40 && mode==="carreira" && (
               <button
                 onClick={onSTJ}
                 className="w-full px-4 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-sm font-semibold mt-2"
@@ -760,7 +809,7 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onRelatorio,sons}){
 }
 
 // -------- Julgamento --------
-function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons}){
+function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons,mode}){
   const [falas,setFalas] = useState([]);
   const [pergunta,setPergunta] = useState("");
   const [provaSel,setProvaSel] = useState(null);
@@ -768,6 +817,11 @@ function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons}){
   const [defesaText,setDefesaText] = useState("");
   const typedAcus = useTypewriter(acusacaoText,14);
   const typedDef = useTypewriter(defesaText,14);
+
+  const [jurados,setJurados] = useState(
+    ()=>Array.from({length:12},(_,i)=>({id:i+1,voto:null,certeza:0}))
+  );
+  const jurorAvatars = Array.from({length:12},(_,i)=>`juri${i+1}.jpg`);
 
   async function ouvir(ag){
     const fala = await iaFala(ag,caso,"");
@@ -793,12 +847,32 @@ function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons}){
     sons.murmur.play();
   }
 
+  function simularJuri(){
+    if(caso.tipo!=="criminal"){
+      alert("Este caso não possui júri popular nesta simulação. Júri popular é reservado a crimes dolosos contra a vida.");
+      return;
+    }
+    const novo = jurados.map(j=>{
+      const voto = Math.random()<0.6; // leve viés para condenar
+      const certeza = 60 + Math.round(Math.random()*40);
+      return {...j,voto,certeza};
+    });
+    setJurados(novo);
+    sons.murmur.play();
+  }
+
   function decidir(veredito){
     const acertou = veredito===caso.gabarito.culpado;
     const novoStatus = veredito ? "condenado" : "absolvido";
     const atualizado = {...caso,status:novoStatus};
-    onAtualizarCaso(atualizado,acertou);
-    alert(acertou ? "Decisão coerente com o gabarito da simulação." : "Nesta simulação, o gabarito apontava outra solução.");
+    onAtualizarCaso(atualizado,acertou,mode);
+    if(mode==="carreira"){
+      alert(acertou
+        ? "Decisão coerente com o gabarito da simulação. Seu prestígio foi atualizado."
+        : "Nesta simulação, o gabarito apontava outra solução. Use o relatório para estudar os padrões.");
+    }else{
+      alert("Modo estudo: decisão registrada apenas para fins didáticos, sem alterar estatísticas oficiais.");
+    }
     onVoltar();
   }
 
@@ -811,7 +885,7 @@ function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons}){
         backgroundPosition:"center"
       }}
     >
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
       <ProvaViewer prova={provaSel} onClose={()=>setProvaSel(null)} />
       <div className="relative z-10 max-w-5xl mx-auto p-6">
         <button
@@ -822,6 +896,31 @@ function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons}){
         </button>
         <h1 className="text-2xl font-bold mb-1">{caso.titulo}</h1>
         <p className="text-xs opacity-80 mb-4">{caso.resumo}</p>
+
+        <div className="flex items-center gap-4 mb-4">
+          <div className="flex items-center gap-2">
+            <img
+              src="avatar-promotor.jpg"
+              alt="Promotoria"
+              className="w-10 h-10 rounded-full border border-red-300 object-cover"
+            />
+            <div className="text-xs">
+              <div className="font-semibold text-red-300">Promotoria</div>
+              <div className="opacity-70">Titular da ação penal</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <img
+              src="avatar-defesa.jpg"
+              alt="Defesa"
+              className="w-10 h-10 rounded-full border border-emerald-300 object-cover"
+            />
+            <div className="text-xs">
+              <div className="font-semibold text-emerald-300">Defesa</div>
+              <div className="opacity-70">Advocacia / Defensoria</div>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-3">
@@ -905,7 +1004,47 @@ function Julgamento({caso,onAtualizarCaso,onVoltar,profile,sons}){
               </div>
               <p className="mt-2 text-[10px] opacity-70">
                 A simulação compara sua decisão com um gabarito interno para fins pedagógicos.
+                No modo estudo, não há impacto em prestígio.
               </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/10 p-3 text-xs">
+              <div className="flex items-center justify-between mb-2">
+                <div className="font-semibold">Júri popular</div>
+                <button
+                  onClick={simularJuri}
+                  className="px-3 py-1 rounded-xl bg-white/15 hover:bg-white/25 text-[11px]"
+                >
+                  Simular votação do júri
+                </button>
+              </div>
+              {caso.tipo!=="criminal" && (
+                <p className="text-[10px] opacity-75 mb-2">
+                  Para família e trabalhista, não há júri popular. Este painel é apenas ilustrativo.
+                </p>
+              )}
+              <div className="grid grid-cols-4 gap-2">
+                {jurados.map((j,idx)=>(
+                  <div key={j.id} className="rounded-xl bg-black/40 p-2 flex flex-col items-center text-[10px]">
+                    <img
+                      src={jurorAvatars[idx]}
+                      alt={`Jurador ${j.id}`}
+                      className="w-8 h-8 rounded-full mb-1 object-cover border border-white/40"
+                    />
+                    <div className="opacity-80">J{j.id.toString().padStart(2,"0")}</div>
+                    <div className="mt-1">
+                      {j.voto===null
+                        ? <span className="opacity-60">—</span>
+                        : j.voto
+                          ? <span className="text-red-300">Cond.</span>
+                          : <span className="text-emerald-300">Absolv.</span>}
+                    </div>
+                    <div className="text-[9px] opacity-70">
+                      {j.certeza? j.certeza+"%" : ""}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -941,15 +1080,16 @@ function STJInfo({onVoltar}){
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="max-w-md w-full mx-4 p-6 rounded-3xl bg-white/10 border border-white/15">
-        <h2 className="text-2xl font-bold mb-2">STJ — Versão Didática</h2>
+        <h2 className="text-2xl font-bold mb-2">STJ — Próximo nível</h2>
         <p className="text-sm opacity-90 mb-3">
-          Nesta versão do protótipo, o modo STJ ainda está em construção.
-          Futuras atualizações incluirão prova objetiva simulada, votação
-          colegiada e análise de precedentes.
+          Nesta versão do protótipo, o modo STJ ainda está em construção. A ideia
+          é incluir prova objetiva simulada, votação colegiada e análise de
+          precedentes, aproximando o funcionamento das cortes superiores.
         </p>
         <p className="text-xs opacity-80 mb-4">
-          Você já pode usar o relatório trimestral para estudar seu padrão
-          decisório e se preparar para esse próximo nível.
+          Enquanto isso, use o relatório semestral para estudar seu padrão
+          decisório, identificar pontos fortes e escolher quais áreas deseja
+          aprofundar para uma futura promoção.
         </p>
         <button
           onClick={onVoltar}
@@ -974,6 +1114,7 @@ function App(){
   const [currentUser,setCurrentUser] = useState(null);
   const [cases,setCases] = useState(()=>seedCases());
   const [currentCaseId,setCurrentCaseId] = useState(null);
+  const [mode,setMode] = useState("carreira"); // carreira | estudo
 
   const sons = {
     gavel: useSound(SOUND_URLS.gavel,true,0.8),
@@ -998,9 +1139,11 @@ function App(){
     setStage("julgamento");
   }
 
-  function handleAtualizarCaso(casoAtualizado,acertou){
+  function handleAtualizarCaso(casoAtualizado,acertou,modoAtual){
     setCases(prev=>prev.map(c=>c.id===casoAtualizado.id?casoAtualizado:c));
     if(!currentProfile) return;
+    if(modoAtual!=="carreira") return; // no modo estudo não mexe em stats
+
     const stats = currentProfile.stats || {julgados:0,acertos:0,prestigio:0};
     const julgados = stats.julgados + 1;
     const acertos = stats.acertos + (acertou?1:0);
@@ -1069,6 +1212,8 @@ function App(){
         sons={sons}
         onSTJ={()=>setStage("stj")}
         onRelatorio={()=>setStage("relatorio")}
+        mode={mode}
+        setMode={setMode}
       />
     );
 
@@ -1082,13 +1227,14 @@ function App(){
         onVoltar={()=>setStage("escritorio")}
         profile={currentProfile}
         sons={sons}
+        mode={mode}
       />
     );
   }
 
   if(stage==="relatorio")
     return (
-      <RelatorioTrimestral
+      <RelatorioSemestral
         profile={currentProfile}
         cases={cases}
         onVoltar={()=>setStage("escritorio")}
