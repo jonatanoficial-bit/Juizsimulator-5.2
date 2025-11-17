@@ -39,6 +39,23 @@
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
+/* -------------------- CONFIG DE IMAGENS -------------------- */
+/* Mantenha estes nomes exatamente iguais às imagens do GitHub  */
+const IMG = {
+  capa: "capa.jpg",
+  escritorio: "escritorio.jpg",
+  sala: "saladejulgamento.jpg",
+  stj: "stj.jpg",
+  promotor: "promotor.jpg",
+  defesa: "advogado.jpg",
+  testemunha: "testemunha.jpg",
+  bo: "bo.jpg",
+  laudo: "laudo.jpg",
+  pericia: "laudo.jpg", // usa mesmo fundo do laudo
+  avatar: (i) => `avatar${i}.jpg`,
+  juri: (i) => `juri${i}.jpg`
+};
+
 /* -------------------- DADOS FIXOS -------------------- */
 
 const ESTADOS = {
@@ -56,7 +73,7 @@ const ESTADOS = {
   "SE":["Aracaju"],"TO":["Palmas"]
 };
 
-const JURY_AVATARS = Array.from({length:12},(_,i)=>`juri${i+1}.jpg`);
+const JURY_AVATARS = Array.from({length:12},(_,i)=>IMG.juri(i+1));
 
 const SOUND_URLS = {
   gavel: "https://cdn.pixabay.com/download/audio/2022/03/15/audio_b8e7f6b3a0.mp3?filename=judge-gavel-182004.mp3",
@@ -77,27 +94,43 @@ function useSound(url, enabled=true, volume=0.7){
 
 /* -------------------- GERADOR DE CASOS -------------------- */
 
-function makeDocs(titulo,resumo){
+function makeDocs(titulo,resumo,tipo){
+  const baseContexto =
+    tipo==="criminal"
+      ? "Contexto: processo criminal, com investigação policial, oitiva de testemunhas e avaliação de materialidade e autoria.\n\n"
+      : tipo==="familia"
+        ? "Contexto: processo de família, com foco em melhor interesse de crianças/adolescentes e equilíbrio das relações familiares.\n\n"
+        : tipo==="trabalhista"
+          ? "Contexto: processo trabalhista, analisando vínculo, jornada, verbas e eventuais danos morais.\n\n"
+          : "Contexto: recurso especial em instância superior, focado em interpretação de lei federal e precedentes.\n\n";
+
   return {
     bo: (
       "BOLETIM DE OCORRÊNCIA\n\n" +
       "Título: " + titulo + "\n\n" +
-      "Síntese fático-cronológica dos acontecimentos, com identificação das partes, " +
-      "horário aproximado, local do fato e breve histórico da intervenção policial.\n\n" +
-      "Resumo: " + resumo
+      baseContexto +
+      "Síntese fático-cronológica dos acontecimentos, identificando partes, horário aproximado, local do fato, " +
+      "intervenção das autoridades e primeiras providências adotadas.\n\n" +
+      "Resumo do caso: " + resumo
     ),
     laudo: (
-      "LAUDO PERICIAL / PERÍCIA COMPLEMENTAR\n\n" +
-      "Objeto: análise técnica dos vestígios materiais relacionados ao caso \"" + titulo + "\".\n\n" +
-      "Constatações: descrevem-se danos, marcas, registros de câmeras, exames médicos, " +
-      "documentos trabalhistas ou familiares, conforme a natureza da ação.\n\n" +
-      "Conclusão técnica: avaliação imparcial dos indícios sob o ponto de vista pericial.\n\n" +
+      "LAUDO PERICIAL / PERÍCIA PRINCIPAL\n\n" +
+      "Objeto: análise técnica dos vestígios e documentos relacionados ao caso \"" + titulo + "\".\n\n" +
+      "Principais constatações:\n" +
+      "- Descrição minuciosa de danos, registros, documentos, exames ou provas materiais relevantes.\n" +
+      "- Indicação de compatibilidades ou incompatibilidades entre a narrativa das partes e os vestígios.\n\n" +
+      "Conclusão técnica: avaliação imparcial, indicando hipóteses mais prováveis à luz da ciência aplicada.\n\n" +
       "Resumo do caso: " + resumo
     ),
     pericia: (
       "LAUDO PERICIAL COMPLEMENTAR\n\n" +
-      "Este documento aprofunda pontos específicos solicitados pelo Juízo ou pelas partes, " +
-      "reforçando ou esclarecendo trechos do laudo principal.\n\n" +
+      "Finalidade: aprofundar pontos específicos solicitados pelo Juízo ou pelas partes, " +
+      "esclarecendo dúvidas levantadas na perícia principal.\n\n" +
+      "Análises adicionais:\n" +
+      "- Releitura de documentos, exames e registros sob novo foco.\n" +
+      "- Verificação de versões divergentes com base no mesmo conjunto probatório.\n\n" +
+      "Síntese final: consolidação das informações técnicas, reforçando a coerência (ou ausência dela) " +
+      "entre os vestígios e as narrativas em juízo.\n\n" +
       "Resumo do caso: " + resumo
     )
   };
@@ -111,7 +144,7 @@ function seedCases(){
     for(let i=1;i<=quantidade;i++){
       const t = baseTitulos[(i-1)%baseTitulos.length];
       const r = baseResumos[(i-1)%baseResumos.length];
-      const docs = makeDocs(t, r);
+      const docs = makeDocs(t, r, tipo);
       casos.push({
         id: tipo.toUpperCase()+"-"+id++,
         tipo,
@@ -211,23 +244,25 @@ async function iaFala(agente, caso, pergunta=""){
   let corpo;
   if(agente==="acusacao"){
     corpo =
-      "A acusação sustenta que o conjunto das provas, especialmente documentos e depoimentos constantes dos autos, " +
-      "aponta para a responsabilidade do réu, observando o padrão de prova exigido para a condenação. ";
+      "A acusação organiza os elementos que apontam para a responsabilidade da parte ré, destacando coerência entre boletim, laudos e depoimentos. ";
   } else if(agente==="defesa"){
     corpo =
-      "A defesa destaca as lacunas probatórias, eventuais contradições e a necessidade de se preservar a presunção de inocência, " +
-      "valorizando interpretações que favoreçam a dúvida razoável. ";
+      "A defesa ressalta lacunas, contradições e alternativas interpretativas que favorecem a dúvida razoável e a preservação de direitos fundamentais. ";
   } else {
     corpo =
-      "Eu, enquanto testemunha, narro em primeira pessoa o que presenciei: descrevo o ambiente, as pessoas envolvidas " +
-      "e a sequência dos fatos sem emitir juízo de valor jurídico, apenas relatando o que meus sentidos alcançaram. ";
+      "Eu, enquanto testemunha, descrevo em primeira pessoa o que vi e ouvi: narro o ambiente, as pessoas, a sequência dos fatos e o meu posicionamento físico em relação ao acontecimento, sem emitir juízo jurídico, apenas relatando a experiência vivida. ";
   }
+
+  const docRef =
+    caso && caso.docs
+      ? "Os documentos oficiais (boletim, laudos e perícia complementar) reforçam detalhes importantes que o Juiz pode consultar no dossiê. "
+      : "";
 
   const resumo = "Resumo do caso: " + caso.resumo;
 
-  const texto = prefixo + focoPergunta + corpo + resumo;
+  const texto = prefixo + focoPergunta + corpo + docRef + resumo;
 
-  await new Promise(r=>setTimeout(r,400));
+  await new Promise(r=>setTimeout(r,350));
   return texto;
 }
 
@@ -238,7 +273,7 @@ function SplashScreen({onStart}){
     <div className="min-h-screen flex items-center justify-center bg-black">
       <div
         className="relative w-full max-w-md h-[520px] rounded-3xl overflow-hidden shadow-2xl"
-        style={{backgroundImage:"url('capa.jpg')", backgroundSize:"cover", backgroundPosition:"center"}}
+        style={{backgroundImage:`url('${IMG.capa}')`, backgroundSize:"cover", backgroundPosition:"center"}}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-transparent" />
         <div className="relative z-10 h-full flex flex-col items-center justify-end pb-10 px-6 text-white">
@@ -265,11 +300,11 @@ function TutorialSalvamento({onContinuar}){
         <ol className="list-decimal pl-5 space-y-2 text-sm">
           <li>Seu perfil é salvo automaticamente neste navegador (localStorage).</li>
           <li>Na tela de login você pode <b>Exportar</b> um arquivo de backup <code>.json</code>.</li>
-          <li>Em qualquer outro dispositivo, use <b>Importar</b> para continuar exatamente do ponto em que parou.</li>
-          <li>Use sempre o mesmo nome de usuário para manter a sua carreira organizada.</li>
+          <li>Em outro dispositivo, use <b>Importar</b> para continuar do ponto em que parou.</li>
+          <li>Use sempre o mesmo nome de usuário para manter sua carreira organizada.</li>
         </ol>
         <p className="mt-4 text-xs opacity-80">
-          Importante: por ser um simulador educacional, nenhuma decisão aqui tem efeito jurídico real.
+          Importante: este é um simulador educacional. Nenhuma decisão aqui tem efeito jurídico real.
         </p>
         <button
           onClick={onContinuar}
@@ -290,7 +325,7 @@ function AvatarSelect({onChoose}){
       <div className="max-w-xl w-full mx-4 p-6 rounded-3xl bg-slate-900 border border-white/10">
         <h2 className="text-2xl font-bold mb-2 text-center">Escolha seu avatar de Juiz</h2>
         <p className="text-xs opacity-80 mb-4 text-center">
-          Essa imagem aparecerá no seu escritório, na tela de relatório e em outras partes do simulador.
+          Essa imagem aparecerá no seu escritório, relatórios e sala de julgamento.
         </p>
         <div className="grid grid-cols-3 gap-3 mb-4">
           {avatars.map(i=>(
@@ -302,7 +337,7 @@ function AvatarSelect({onChoose}){
                 (selected===i ? "border-emerald-400 ring-2 ring-emerald-500" : "border-white/20")
               }
             >
-              <img src={`avatar${i}.jpg`} alt={`Avatar ${i}`} className="w-full h-full object-cover" />
+              <img src={IMG.avatar(i)} alt={`Avatar ${i}`} className="w-full h-full object-cover" />
             </button>
           ))}
         </div>
@@ -375,7 +410,7 @@ function LoginScreen({profiles,setProfiles,setCurrentProfile,onEnter}){
   return (
     <div
       className="min-h-screen flex items-center justify-center"
-      style={{backgroundImage:"url('capa.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
+      style={{backgroundImage:`url('${IMG.capa}')`,backgroundSize:"cover",backgroundPosition:"center"}}
     >
       <div className="bg-black/80 text-white max-w-lg w-full mx-4 p-6 rounded-3xl border border-white/10 backdrop-blur">
         <h1 className="text-xl font-semibold mb-1 text-center">Vale Produção apresenta</h1>
@@ -535,7 +570,7 @@ function LocationSelect({profile,onSelectLocation}){
 
 function ProvaViewer({tipo,conteudo,onClose}){
   if(!tipo) return null;
-  const bgImg = tipo==="bo" ? "bo.jpg" : "laudo.jpg";
+  const bgImg = tipo==="bo" ? IMG.bo : IMG.laudo;
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-40">
       <div
@@ -571,7 +606,7 @@ function RelatorioModal({profile,onClose}){
         <div className="flex items-center gap-4 mb-4">
           <div className="w-16 h-16 rounded-2xl overflow-hidden border border-emerald-400/60">
             <img
-              src={`avatar${profile.avatar||1}.jpg`}
+              src={IMG.avatar(profile.avatar||1)}
               alt="Avatar juiz"
               className="w-full h-full object-cover"
             />
@@ -621,11 +656,11 @@ function RelatorioModal({profile,onClose}){
 }
 
 function Escritorio({profile,cases,onSelectCase,onSTJ,onShowRelatorio,sons}){
-  const fila = cases.filter(c=>c.status==="na_fila" && c.tipo===profile.court);
+  const fila = cases.filter(c=>c.status==="na_fila" && (profile.court==="stj" ? c.tipo==="stj" : c.tipo===profile.court));
   return (
     <div
       className="min-h-screen relative text-white"
-      style={{backgroundImage:"url('escritorio.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
+      style={{backgroundImage:`url('${IMG.escritorio}')`,backgroundSize:"cover",backgroundPosition:"center"}}
     >
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
       <div className="relative z-10 max-w-6xl mx-auto p-6">
@@ -633,7 +668,7 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onShowRelatorio,sons}){
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-2xl overflow-hidden border border-emerald-400/60">
               <img
-                src={`avatar${profile.avatar||1}.jpg`}
+                src={IMG.avatar(profile.avatar||1)}
                 alt="Avatar juiz"
                 className="w-full h-full object-cover"
               />
@@ -641,7 +676,7 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onShowRelatorio,sons}){
             <div>
               <h1 className="text-2xl font-bold">Escritório do Juiz</h1>
               <p className="text-xs opacity-80">
-                {profile.nome} — {profile.cidade}/{profile.estado} • Vara {profile.court||"não definida"}
+                {profile.nome} — {profile.cidade}/{profile.estado} • {profile.court==="stj"?"Ministro(a) do STJ":"Vara " + (profile.court||"não definida")}
               </p>
             </div>
           </div>
@@ -686,12 +721,14 @@ function Escritorio({profile,cases,onSelectCase,onSTJ,onShowRelatorio,sons}){
             >
               Ver relatório trimestral
             </button>
-            <button
-              onClick={onSTJ}
-              className="w-full px-4 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-sm font-semibold mt-2"
-            >
-              Candidatar-se ao STJ
-            </button>
+            {profile.court!=="stj" && (
+              <button
+                onClick={onSTJ}
+                className="w-full px-4 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-600 text-sm font-semibold mt-2"
+              >
+                Candidatar-se ao STJ
+              </button>
+            )}
             <div className="mt-4 text-[10px] opacity-70">
               Simulação educacional inspirada em rotinas reais, sem valor jurídico. Ideal para cursos de Direito,
               concursos e treinamento de raciocínio jurídico.
@@ -708,7 +745,7 @@ function JuryGrid({tipoCaso,onDeliberar,vereditoFinal}){
 
   function iniciar(){
     if(tipoCaso!=="criminal"){
-      alert("Neste tipo de processo (família ou trabalhista) não há júri popular. A decisão é exclusiva do juiz.");
+      alert("Neste tipo de processo (família, trabalhista ou STJ) não há júri popular. A decisão é exclusiva do juiz.");
       return;
     }
     let votosCulpado = 0;
@@ -795,9 +832,11 @@ function Julgamento({caso,onVoltar,onDecisao,profile,sons}){
   }
 
   function decidir(decisao){
+    sons.gavel.play();
     const acertou = decisao===caso.gabarito.culpado;
     setVereditoFinal(decisao);
     onDecisao(decisao,acertou,caso);
+    onVoltar();  // VOLTA PARA O ESCRITÓRIO APÓS DECISÃO (corrige "travamento")
   }
 
   function abrirDoc(tipo){
@@ -808,7 +847,7 @@ function Julgamento({caso,onVoltar,onDecisao,profile,sons}){
   return (
     <div
       className="min-h-screen relative text-white"
-      style={{backgroundImage:"url('saladejulgamento.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
+      style={{backgroundImage:`url('${IMG.sala}')`,backgroundSize:"cover",backgroundPosition:"center"}}
     >
       <div className="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
       {docAberto && (
@@ -828,7 +867,7 @@ function Julgamento({caso,onVoltar,onDecisao,profile,sons}){
 
         <div className="flex items-center gap-3 mb-2">
           <div className="w-12 h-12 rounded-2xl overflow-hidden border border-emerald-400/60">
-            <img src={`avatar${profile.avatar||1}.jpg`} alt="Juiz" className="w-full h-full object-cover" />
+            <img src={IMG.avatar(profile.avatar||1)} alt="Juiz" className="w-full h-full object-cover" />
           </div>
           <div>
             <h1 className="text-xl font-bold">Sala de Julgamento</h1>
@@ -843,42 +882,47 @@ function Julgamento({caso,onVoltar,onDecisao,profile,sons}){
             <div className="bg-slate-900/90 rounded-3xl border border-white/10 p-4">
               <h2 className="text-sm font-semibold mb-1">Audiência</h2>
 
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-red-400/70">
-                  <img src="promotor.jpg" alt="Promotor" className="w-full h-full object-cover" />
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-red-400/70">
+                    <img src={IMG.promotor} alt="Promotor" className="w-full h-full object-cover" />
+                  </div>
+                  <button
+                    onClick={()=>ouvir("acusacao")}
+                    className="px-3 py-1 rounded-xl bg-red-500 hover:bg-red-600 text-xs font-semibold"
+                  >
+                    Ouvir acusação
+                  </button>
                 </div>
-                <button
-                  onClick={()=>ouvir("acusacao")}
-                  className="px-3 py-1 rounded-xl bg-red-500 hover:bg-red-600 text-xs font-semibold"
-                >
-                  Ouvir acusação
-                </button>
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-emerald-400/70 ml-2">
-                  <img src="advogado.jpg" alt="Defesa" className="w-full h-full object-cover" />
+                <div className="flex items-center gap-1">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-emerald-400/70">
+                    <img src={IMG.defesa} alt="Defesa" className="w-full h-full object-cover" />
+                  </div>
+                  <button
+                    onClick={()=>ouvir("defesa")}
+                    className="px-3 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold"
+                  >
+                    Ouvir defesa
+                  </button>
                 </div>
-                <button
-                  onClick={()=>ouvir("defesa")}
-                  className="px-3 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-xs font-semibold"
-                >
-                  Ouvir defesa
-                </button>
-
-                <div className="w-8 h-8 rounded-full overflow-hidden border border-sky-400/70 ml-2">
-                  <img src="testemunha.jpg" alt="Testemunha" className="w-full h-full object-cover" />
+                <div className="flex items-center gap-1">
+                  <div className="w-8 h-8 rounded-full overflow-hidden border border-sky-400/70">
+                    <img src={IMG.testemunha} alt="Testemunha" className="w-full h-full object-cover" />
+                  </div>
+                  <button
+                    onClick={()=>ouvir("testemunha")}
+                    className="px-3 py-1 rounded-xl bg-sky-500 hover:bg-sky-600 text-xs font-semibold"
+                  >
+                    Ouvir testemunha
+                  </button>
                 </div>
-                <button
-                  onClick={()=>ouvir("testemunha")}
-                  className="px-3 py-1 rounded-xl bg-sky-500 hover:bg-sky-600 text-xs font-semibold"
-                >
-                  Ouvir testemunha
-                </button>
               </div>
 
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {falas.length===0 && (
                   <p className="text-xs opacity-70">
-                    Utilize os botões acima para ouvir a acusação, a defesa e a testemunha.
-                    As falas aparecerão aqui em formato de texto corrido.
+                    Use os botões acima para ouvir a acusação, a defesa e a testemunha. As falas aparecem abaixo,
+                    com efeito de máquina de escrever.
                   </p>
                 )}
                 {falas.map((f,idx)=>(
@@ -941,6 +985,7 @@ function Julgamento({caso,onVoltar,onDecisao,profile,sons}){
               <h2 className="text-sm font-semibold mb-2">Veredito do Juiz</h2>
               <p className="text-[11px] opacity-80 mb-3">
                 Após analisar as provas e ouvir as partes, decida se o réu deve ser condenado ou absolvido.
+                A simulação avalia se sua decisão é coerente com o gabarito pedagógico.
               </p>
               <div className="flex flex-col gap-2">
                 <button
@@ -1041,7 +1086,7 @@ function STJExam({profile,onFinish}){
   return (
     <div
       className="min-h-screen flex items-center justify-center text-white"
-      style={{backgroundImage:"url('stj.jpg')",backgroundSize:"cover",backgroundPosition:"center"}}
+      style={{backgroundImage:`url('${IMG.stj}')`,backgroundSize:"cover",backgroundPosition:"center"}}
     >
       <div className="bg-black/80 max-w-3xl w-full mx-4 p-6 rounded-3xl border border-yellow-400/60 backdrop-blur">
         <h2 className="text-2xl font-bold mb-1 text-center">Prova Rápida – STJ</h2>
@@ -1098,7 +1143,6 @@ function App(){
   const [cases,setCases] = useState(()=>seedCases());
   const [currentCaseId,setCurrentCaseId] = useState(null);
   const [showRelatorio,setShowRelatorio] = useState(false);
-  const [stjMode,setStjMode] = useState(false);
 
   const sons = {
     gavel: useSound(SOUND_URLS.gavel,true,0.7),
@@ -1131,7 +1175,6 @@ function App(){
       alert("Para se candidatar ao STJ é necessário, nesta simulação, ter pelo menos 20 casos julgados e 40 pontos de prestígio.");
       return;
     }
-    setStjMode(true);
     setScreen("stj_exam");
   }
 
@@ -1150,10 +1193,12 @@ function App(){
   }
 
   function onDecisaoCaso(decisao,acertou,caso){
+    // Atualiza casos
     setCases(prev=>prev.map(c=>{
       if(c.id!==caso.id) return c;
       return {...c,status: decisao ? "condenado":"absolvido"};
     }));
+    // Atualiza estatísticas
     updateCurrentProfile(p=>{
       const s = p.stats||{};
       s.julgados = (s.julgados||0)+1;
@@ -1167,6 +1212,8 @@ function App(){
       }
       p.stats = s;
     });
+    // Sai do caso atual (corrige travamento em Família/Trabalhista)
+    setCurrentCaseId(null);
   }
 
   /* ----- ROTAS DE TELA ----- */
