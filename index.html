@@ -1,102 +1,64 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Simulador de Juiz</title>
 
-  <!-- Mobile first -->
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Estilo -->
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- ===================== -->
-  <!-- TELA: MENU PRINCIPAL -->
-  <!-- ===================== -->
-  <section id="tela-menu" class="tela ativa">
+  <!-- ================= MENU ================= -->
+  <div id="tela-menu" class="tela ativa">
     <h1>Simulador de Juiz</h1>
-    <p class="subtitulo">
-      Um simulador realista da carreira judicial
-    </p>
-
+    <p>Viva a experiência realista da magistratura</p>
     <button onclick="iniciarJogo()">Iniciar Carreira</button>
+  </div>
 
-    <p class="rodape">
-      Versão Alpha • Projeto Educacional
-    </p>
-  </section>
-
-  <!-- ================= -->
-  <!-- TELA: ESCRITÓRIO -->
-  <!-- ================= -->
-  <section id="tela-escritorio" class="tela">
+  <!-- ================= ESCRITÓRIO ================= -->
+  <div id="tela-escritorio" class="tela">
     <h2>Escritório do Juiz</h2>
 
-    <div class="painel-status">
-      <p><strong>Cargo:</strong> <span id="cargo">Juiz Substituto</span></p>
-      <p><strong>Prestígio:</strong> <span id="prestigio">0</span></p>
-      <p><strong>Nível:</strong> <span id="nivel">1</span></p>
+    <div id="painel-status">
+      <p><strong>Cargo:</strong> <span id="cargo"></span></p>
+      <p><strong>Nível:</strong> <span id="nivel"></span></p>
+      <p><strong>Prestígio:</strong> <span id="prestigio"></span></p>
     </div>
 
     <h3>Processos na fila</h3>
+    <ul id="lista-processos"></ul>
 
-    <ul id="lista-processos">
-      <!-- preenchido via JS -->
-    </ul>
+    <button onclick="voltarMenu()">Voltar ao Menu</button>
+  </div>
 
-    <button class="botao-secundario" onclick="voltarMenu()">
-      Voltar ao Menu
-    </button>
-  </section>
-
-  <!-- ================= -->
-  <!-- TELA: PROCESSO -->
-  <!-- ================= -->
-  <section id="tela-processo" class="tela">
+  <!-- ================= PROCESSO ================= -->
+  <div id="tela-processo" class="tela">
     <h2 id="processo-titulo"></h2>
-
     <p id="processo-descricao"></p>
 
-    <button onclick="iniciarAudiencia()">
-      Iniciar Audiência
-    </button>
+    <button onclick="iniciarAudiencia()">Iniciar Audiência</button>
+    <button onclick="voltarEscritorio()">Voltar</button>
+  </div>
 
-    <button class="botao-secundario" onclick="voltarEscritorio()">
-      Voltar ao Escritório
-    </button>
-  </section>
-
-  <!-- ================== -->
-  <!-- TELA: AUDIÊNCIA -->
-  <!-- ================== -->
-  <section id="tela-audiencia" class="tela">
+  <!-- ================= AUDIÊNCIA ================= -->
+  <div id="tela-audiencia" class="tela">
     <h2>Audiência</h2>
 
-    <div class="caixa-dialogo">
-      <p id="fala-personagem"></p>
-    </div>
+    <div id="fala-personagem"></div>
 
-    <div id="acoes-audiencia">
-      <!-- botões dinâmicos -->
-    </div>
-  </section>
+    <div id="acoes-audiencia"></div>
+  </div>
 
-  <!-- ================= -->
-  <!-- TELA: RESULTADO -->
-  <!-- ================= -->
-  <section id="tela-resultado" class="tela">
+  <!-- ================= RESULTADO ================= -->
+  <div id="tela-resultado" class="tela">
     <h2>Resultado do Julgamento</h2>
 
-    <p id="resultado-texto"></p>
+    <pre id="resultado-texto"></pre>
 
-    <button onclick="voltarEscritorio()">
-      Voltar ao Escritório
-    </button>
-  </section>
+    <button onclick="voltarEscritorio()">Voltar ao Escritório</button>
+  </div>
 
-  <!-- Script -->
   <script src="script.js"></script>
 </body>
 </html>
